@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrustCheck.AI</title>
+    <link rel="stylesheet" href="../CSS styles/index.css">
+    <link rel="icon" href="../Images/tab_icon.png" type="image/png">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- Upper container with website name, page buttons and sign up button -->
+    <header>
+        <h1 class="wesbite-header-name">TrustCheck.AI</h1>
+
+        <div class="top-buttons-container">
+            <a href="#"><button class="home-button active-button">Home</button></a>
+            <a href="../HTML pages/history.html"><button class="history-button">Ad History</button></a>
+            <a href="../HTML pages/about.html"><button class="about-button">About</button></a>
+            <a href="../HTML pages/contact.html"><button class="contact-button">Contact</button></a>
+        </div>
+
+        <button class="register-button">Get Started</button>
+    </header>
+
+    <!-- Main container with AI-UI   -->
+    <main>
+        <div class="upload-form">
+            <div class="upload-container" id="drop-area">
+                <label for="fileInput" class="upload-header clickable-label">
+                    <img src="../Images/upload.png" alt="Upload Icon" class="icon-image">
+                    <p>Drag & Drop your image(s) or click to browse</p>
+                </label>
+
+                <div class="upload-footer">
+                    <p id="fileName">No files selected</p>
+                    <button id="delete-btn" class="delete-button" title="Clear files">
+                        <img src="../Images/delete.png" alt="Delete Icon" class="icon-image small">
+                    </button>
+                </div>
+
+                <input id="fileInput" type="file" accept="image/*" multiple>
+            </div>
+
+            <div id="previewArea" class="preview-area">
+                <img id="imagePreview" style="display:none; max-width:100%; margin-top:10px;" />
+            </div>
+
+            <div class="form-fields">
+                <label for="textInput">Post Text:</label>
+                <textarea id="textInput" rows="4" placeholder="Your post caption"></textarea>
+
+                <label for="platformSelect">Choose Platform:</label>
+                <select id="platformSelect">
+                    <option value="">Not Selected</option>
+                    <option value="facebook">Facebook</option>
+                    <option value="google">Google</option>
+                </select>
+
+                <button id="analyzeButton" class="register-button" disabled>Analyze</button>
+
+                <div id="loadingDots" class="dots-container" style="display: none;">
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Container for AI analyzation result -->
+    <!-- <div id="aiResultPopup" class="ai-popup hidden">
+        <div class="ai-popup-content">
+            <span class="ai-close-btn" onclick="closePopup()">✖</span>
+            <h2>AI Review Result</h2>
+            <div class="slider-container">
+                <input type="range" min="0" max="100" value="50" id="scoreSlider" disabled />
+                <div id="scoreValue">Score: 0</div>
+            </div>
+            <div id="aiResultContent" class="ai-result-text"></div>
+        </div>
+    </div> -->
+
+    <!-- AI Result Modal -->
+    <div id="aiResultPopup" class="ai-popup hidden">
+        <div class="ai-popup-content ai-card">
+            <div class="ai-head">
+                <h2>AI Review Result</h2>
+                <div class="ai-head-right">
+                    <span id="verdictBadge" class="badge">—</span>
+                    <button class="ai-close-btn" onclick="closePopup()" aria-label="Close">✖</button>
+                </div>
+            </div>
+
+            <div class="ai-summary">
+                <div class="gauge" id="scoreGauge">
+                    <div class="gauge__value" id="scoreValue">0</div>
+                    <div class="gauge__label">Compliance</div>
+                </div>
+
+                <div class="ai-meta">
+                    <div class="meta-row">
+                        <span>Platform</span>
+                        <strong id="platformValue">—</strong>
+                    </div>
+                    <div class="meta-row">
+                        <span>Overall</span>
+                        <strong id="overallLabel">—</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ai-grid">
+                <section class="panel">
+                    <h3>Text Violations</h3>
+                    <ul id="textViolations" class="list"></ul>
+                </section>
+
+                <section class="panel">
+                    <h3>Image Violations</h3>
+                    <ul id="imageViolations" class="list"></ul>
+                </section>
+
+                <section class="panel">
+                    <h3>Text Suggestions</h3>
+                    <ul id="textSuggestions" class="list list--suggestion"></ul>
+                </section>
+
+                <section class="panel">
+                    <h3>Image Suggestions</h3>
+                    <ul id="imageSuggestions" class="list list--suggestion"></ul>
+                </section>
+            </div>
+
+            <div class="ai-footer">
+                <button class="register-button" id="copyReportBtn">Copy report</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Footer with wesbite and creator information -->
+    <footer class="footer">
+        <p>© <span id="year"></span> TrustCheck.AI - Built by one curious mind.</p>
+    </footer>
+    
+    <script src="../JS scripts/index.js"></script>
+</body>
+</html>

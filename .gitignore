@@ -1,0 +1,26 @@
+# Environment variables
+.env
+.env.*
+
+# API keys
+key.txt
+keys.txt
+secrets.txt
+
+# Python
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+
+# Build folders
+dist/
+build/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Notes
+Notes/

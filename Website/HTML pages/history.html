@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrustCheck.AI - Ad History</title>
+    <link rel="stylesheet" href="../CSS styles/history.css">
+    <link rel="icon" href="../Images/tab_icon.png" type="image/png">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    
+    <!-- Upper container with website name, page buttons and sign up button -->
+    <header>
+        <h1 class="wesbite-header-name">TrustCheck.AI</h1>
+
+        <div class="top-buttons-container">
+            <a href="index.html"><button class="home-button">Home</button></a>
+            <a href="history.html"><button class="history-button active-button">Ad History</button></a>
+            <a href="about.html"><button class="about-button">About</button></a>
+            <a href="contact.html"><button class="contact-button">Contact</button></a>
+        </div>
+
+        <button class="register-button">Get Started</button>
+    </header>
+
+    <!-- Main container with ad history information -->
+    <main>
+        <div class="history-wrapper">
+            <h2>Analysis History</h2>
+            <p>This page shows your past ad scans.</p>
+
+            <div class="placeholder-box">
+                <img src="../Images/history.png" alt="History icon" class="history-icon" />
+                <p>No history yet. Once you analyze ads, they will appear here.</p>
+            </div>
+        </div>
+
+        <div id="clearHistoryContainer" style="display: none; text-align: center; margin-top: 20px;">
+            <button id="clearHistoryBtn" class="register-button">Clear History</button>
+        </div>
+    </main>
+
+    <!-- Container for clean history confirmation -->
+    <div id="confirmPopup" class="confirm-popup hidden">
+        <div class="confirm-content">
+            <p>Are you sure you want to delete all ad history?</p>
+            <div class="popup-buttons">
+                <button id="confirmClearBtn" class="register-button">Yes, clear it</button>
+                <button id="cancelClearBtn" class="register-button" style="background-color: #666;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer with wesbite and creator information -->
+    <footer class="footer">
+        <p>© <span id="year"></span> TrustCheck.AI — Built by one curious mind.</p>
+    </footer>
+
+    <script src="../JS scripts/history.js"></script>
+</body>
+</html>

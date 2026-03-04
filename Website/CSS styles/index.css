@@ -1,0 +1,764 @@
+/* 
+===========================================================================================================
+Overall Settings
+Block Contains:
+ - *: setting applying to every item
+ - body: setting applying to every item in the main body
+===========================================================================================================
+*/
+
+*
+{
+    box-sizing: border-box;
+    font-family: inherit;
+}
+
+body
+{
+    margin: 0;
+    padding: 0;
+
+    font-family: 'Poppins', sans-serif;
+
+    /* background-color: #131314; */
+
+    /* background: #000000;
+    background: linear-gradient(90deg, rgba(0, 0, 0, 1) 0%, rgba(2, 21, 59, 1) 49%, rgba(1, 21, 51, 1) 100%); */
+
+    background: #000000;
+    background: linear-gradient(90deg, rgba(0, 0, 0, 1) 0%, rgba(1, 10, 31, 1) 49%, rgba(1, 21, 51, 1) 100%);
+    color: white;
+}
+
+
+/* 
+===========================================================================================================
+Custom Scrollbar Styling
+Block Contains:
+ - Overall scrollbar customization to match dark blue website theme
+===========================================================================================================
+*/
+
+::-webkit-scrollbar {
+    width: 10px; /* scrollbar width */
+}
+
+::-webkit-scrollbar-track {
+    background-color: #0f0f11; /* dark background track */
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: #3885f1; /* bright blue thumb */
+    border-radius: 6px;
+    border: 2px solid #0f0f11; /* adds a small gap illusion */
+    transition: background-color 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: #69a7ff; /* lighter blue when hovered */
+}
+
+::-webkit-scrollbar-corner {
+    background: #0f0f11;
+}
+
+/* 
+===========================================================================================================
+Header Settings
+Block Contains:
+ - header: top container with name, page buttons, login 
+ - .wesbite-header-name: logo-name settings
+ - .top-buttons-container: top container consisting of following buttons: Home, Ad history, About, Contact
+ - .register-button: button to register user into the system (for example to hold Ad history)
+===========================================================================================================
+*/
+
+header
+{
+    height: 75px;
+    padding: 0 50px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.wesbite-header-name
+{
+    color: white;
+    font-weight: 700;
+    font-size: 30px;
+}
+
+.top-buttons-container
+{
+    width: 500px;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    gap: 30px;
+}
+
+.top-buttons-container button
+{
+    background: none;
+    outline: none;
+    border: none;
+
+    color: white;
+    font-size: 14px;
+    font-weight: 400;
+
+    cursor: pointer;
+}
+
+.top-buttons-container button:hover
+{
+    color: #3885f1;
+}
+
+.top-buttons-container .active-button {
+    color: #3885f1; /* bright blue for current page */
+    font-weight: 600;
+    position: relative;
+}
+
+.top-buttons-container .active-button::after {
+    content: "";
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background-color: #3885f1;
+    border-radius: 2px;
+}
+
+.register-button
+{   
+    height: 35px;
+    padding: 0 20px;
+
+    background: none;
+    outline: none;
+    border: none;
+    border-radius: 30px;
+
+    background-color: #3885f1;
+
+    color: white;
+    font-size: 14px;
+    font-weight: 400;
+
+    cursor: pointer;
+
+    transition: 
+        background-color 0.3s ease,
+        transform 0.2s ease,
+        box-shadow 0.3s ease;
+}
+
+.register-button:hover
+{
+    background-color: #0b59c7;
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(11, 89, 199, 0.4);
+}
+
+/* 
+===========================================================================================================
+Main Settings
+Block Contains:
+ - .upload-form: main form for uploaded data
+ - .upload-container: container for image uploading
+ - .upload-header: header holding upload icon and upload instuctions
+ - .clickable-label: clickable div to select files
+ - .upload-footer: footer holding file names and file delete button
+ - #fileInput: hidden JS element
+ - .delete-button: button to clear file field
+ - .icon-image: small icons settings
+ - .form-fields: div holding all the form fields excluding the image area
+ - .preview-area: area where all the image previews will be shown
+===========================================================================================================
+*/
+
+.upload-form 
+{
+    max-width: 500px;
+    margin: 50px auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    background-color: rgba(56, 133, 241, 0.04);
+    padding: 20px;
+    border-radius: 16px;
+    box-shadow: 0 0 25px rgba(0, 0, 0, 0.2);
+}
+
+.upload-container 
+{
+    width: 100%;
+    border-radius: 12px;
+    background-color: #0f0f11;
+    border: 2px dashed #3885f1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 12px;
+}
+
+.upload-header 
+{
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 20px;
+}
+
+.upload-header p 
+{
+    margin-top: 10px;
+    font-size: 15px;
+}
+
+.clickable-label 
+{
+    cursor: pointer;
+}
+
+.clickable-label:hover 
+{
+    background-color: rgba(56, 133, 241, 0.08);
+}
+
+.upload-footer 
+{
+    background-color: rgba(56, 133, 241, 0.08);
+    width: 100%;
+    height: 45px;
+    padding: 8px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    color: white;
+}
+
+.upload-footer p 
+{
+    flex: 1;
+    text-align: center;
+    font-size: 14px;
+}
+
+#fileInput 
+{
+    display: none;
+}
+
+.delete-button 
+{
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+}
+
+.delete-button:hover 
+{
+    transform: scale(1.1);
+}
+
+.icon-image 
+{
+    height: 60px;
+    object-fit: contain;
+    filter: brightness(1.2);
+    user-select: none;
+}
+
+.icon-image.small 
+{
+    height: 30px;
+    margin: 0 6px;
+    user-select: none;
+}
+
+.form-fields 
+{
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.form-fields label 
+{
+    font-weight: 500;
+}
+
+.form-fields textarea,
+.form-fields select 
+{
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    resize: none;
+    background-color: #1f1f21;
+    color: white;
+    font-size: 14px;
+}
+
+.form-fields textarea::-webkit-scrollbar 
+{
+    width: 6px;
+}
+
+.form-fields textarea::-webkit-scrollbar-thumb 
+{
+    background-color: #3885f1;
+    border-radius: 4px;
+}
+
+.form-fields textarea::-webkit-scrollbar-track 
+{
+    background-color: #1f1f21;
+}
+
+.preview-area 
+{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+    justify-content: center;
+}
+
+.preview-area img.thumbnail 
+{
+    width: 80px;
+    height: 80px;
+    border-radius: 6px;
+    object-fit: cover;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+/* 
+===========================================================================================================
+Footer Settings
+Block Contains:
+ - .footer: footer container holding "© 2025 TrustCheck.AI — Built by one curious mind." string
+===========================================================================================================
+*/
+
+.footer 
+{
+    margin-top: 50px;
+    padding-top: 20px;
+    text-align: center;
+    font-size: 14px;
+    color: #999;
+}
+
+/* 
+===========================================================================================================
+AI Popup Settings
+Block Contains:
+ - .ai-popup: main AI pop-up container holding all the AI analyzis toggleable by JS code
+ - .ai-popup-content: div holding all the AI data
+ - .ai-result-text: string AI analyzis 
+ - .ai-close-btn: X button to close the AI popup window
+ - .hidden: hidden JS element
+ - .slider-container: container holding the rating slider (0-100)
+ - #scoreSlider: slider settings
+ - #scoreValue: string AI ad rating
+===========================================================================================================
+*/
+/* 
+.ai-popup 
+{
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.ai-popup-content 
+{
+    background: #1f1f21;
+    border-radius: 20px;
+    padding: 30px;
+    max-width: 800px;
+    width: 95%;
+    color: white;
+    text-align: center;
+    box-shadow: 0 0 30px rgba(56, 133, 241, 0.3);
+    position: relative;
+}
+
+.ai-popup-content h2 
+{
+    margin-bottom: 15px;
+    color: #3885f1;
+}
+
+.ai-result-text 
+{
+    text-align: left;
+    font-size: 14px;
+    line-height: 1.6;
+    max-height: 500px; 
+    overflow-y: auto;
+}
+
+.ai-result-text::-webkit-scrollbar 
+{
+    width: 6px;
+}
+
+.ai-result-text::-webkit-scrollbar-thumb 
+{
+    background-color: #3885f1;
+    border-radius: 4px;
+}
+
+.ai-result-text::-webkit-scrollbar-track 
+{
+    background-color: #1f1f21;
+}
+
+.ai-close-btn 
+{
+    position: absolute;
+    top: 12px;
+    right: 18px;
+    font-size: 22px;
+    cursor: pointer;
+    color: #ccc;
+}
+
+.ai-close-btn:hover 
+{
+    color: #fff;
+}
+
+.hidden 
+{
+    display: none;
+}
+
+.slider-container 
+{
+    margin-top: 20px;
+    text-align: center;
+}
+
+#scoreSlider 
+{
+    -webkit-appearance: none;
+    width: 100%;
+    height: 12px;
+    border-radius: 10px;
+    background: linear-gradient(to right, red, orange, yellow, green);
+    outline: none;
+    margin-bottom: 10px;
+    pointer-events: none;
+}
+
+#scoreSlider::-webkit-slider-thumb 
+{
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: white;
+    cursor: default;
+    border: 2px solid #3885f1;
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+}
+
+#scoreValue 
+{
+    font-weight: 500;
+    color: #aaa;
+} */
+
+/* ===== AI Result Redesign ===== */
+
+.ai-popup {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(6px);
+  z-index: 1000;
+}
+.ai-popup.active {
+  display: flex;
+}
+
+.ai-card {
+  background: #1f1f21;
+  border-radius: 20px;
+  padding: 26px;
+  width: min(900px, 95vw);
+  color: #fff;
+  box-shadow: 0 0 30px rgba(56,133,241,.30);
+}
+
+.ai-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+.ai-head h2 {
+  color: #3885f1;
+  margin: 0;
+}
+.ai-head-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.badge {
+  --c:#999;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  background: rgba(56,133,241,.08);
+  color: var(--c);
+  border: 1px solid rgba(56,133,241,.25);
+}
+.badge--safe       { --c:#39d98a; background:rgba(57,217,138,.08); border-color:rgba(57,217,138,.25); }
+.badge--borderline { --c:#ffd166; background:rgba(255,209,102,.08); border-color:rgba(255,209,102,.25); }
+.badge--risky      { --c:#ff6b6b; background:rgba(255,107,107,.08); border-color:rgba(255,107,107,.25); }
+
+.ai-close-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(56,133,241,0.1);
+  color: #3885f1;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .2s ease;
+}
+.ai-close-btn:hover {
+  background: #3885f1;
+  color: white;
+  transform: scale(1.05);
+}
+
+/* Gauge */
+.gauge {
+  --size: 160px;
+  --thickness: 14px;
+  --angle: 0deg;
+  --gcolor: #3885f1;
+
+  width: var(--size);
+  height: var(--size);
+  position: relative;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* Hollow ring look */
+  background:
+    radial-gradient(closest-side, #1f1f21 80%, transparent 80%) content-box,
+    conic-gradient(var(--gcolor) var(--angle), rgba(255,255,255,.08) 0deg);
+  mask: radial-gradient(farthest-side, transparent calc(100% - var(--thickness)), black 0);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - var(--thickness)), black 0);
+  transition: background 0.4s ease;
+}
+
+.gauge__value {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-weight: 700;
+  font-size: 38px;
+  color: white;
+  text-shadow: 0 0 6px rgba(56,133,241,.4);
+}
+
+.gauge__label {
+  position: absolute;
+  bottom: 10px;
+  font-size: 12px;
+  color: #aab;
+}
+
+.ai-summary {
+  display:grid;
+  grid-template-columns: 180px 1fr;
+  gap: 22px;
+  margin: 14px 0 6px;
+}
+@media (max-width: 820px){
+  .ai-summary{ grid-template-columns: 1fr; }
+  .ai-grid{ grid-template-columns: 1fr; }
+  .gauge{ margin-inline:auto; }
+}
+
+.ai-meta {
+  display:grid;
+  gap:10px;
+  align-content: space-evenly;
+}
+
+.meta-row {
+  display:grid;
+  grid-template-columns: 120px 1fr;
+  gap:10px;
+  align-items:center;
+  background: rgba(56,133,241,.06);
+  border:1px solid rgba(56,133,241,.15);
+  padding:10px 12px;
+  border-radius:12px;
+}
+.meta-row span { color:#aab; font-size:13px; }
+
+.ai-grid {
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 10px;
+}
+
+.panel {
+  background:#0f0f11;
+  border:1px solid rgba(56,133,241,.18);
+  border-radius:14px;
+  padding:14px;
+  min-height: 120px;
+}
+.panel h3 {
+  margin:0 0 10px;
+  font-size:16px;
+  color:#dfe8ff;
+}
+
+.list {
+  margin:0;
+  padding:0;
+  list-style:none;
+  display:grid;
+  gap:10px;
+}
+.list li { line-height:1.4; }
+.list .empty { opacity:.6; }
+
+.ai-footer {
+  margin-top: 14px;
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+}
+
+/* 
+===========================================================================================================
+Loading animation Settings
+Block Contains:
+ - .dots-container: container holding all the 3 dots to play loading animation
+ - .dot: individual loading dot
+===========================================================================================================
+*/
+
+.dots-container 
+{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    width: 100%;
+    margin-top: 10px;
+}
+
+.dot 
+{
+    height: 20px;
+    width: 20px;
+    margin-right: 10px;
+    border-radius: 10px;
+    background-color: #b3d4fc;
+    animation: pulse 1.5s infinite ease-in-out;
+}
+
+.dot:last-child 
+{
+    margin-right: 0;
+}
+
+.dot:nth-child(1) 
+{
+    animation-delay: -0.3s;
+}
+
+.dot:nth-child(2) 
+{
+    animation-delay: -0.1s;
+}
+
+.dot:nth-child(3) 
+{
+    animation-delay: 0.1s;
+}
+
+/* 
+===========================================================================================================
+Animation Settings
+ - Pulse animation setting for loading dots
+===========================================================================================================
+*/
+
+@keyframes pulse 
+{
+    0% 
+    {
+        transform: scale(0.8);
+        background-color: #b3d4fc;
+        box-shadow: 0 0 0 0 rgba(178, 212, 252, 0.7);
+    }
+    50% 
+    {
+        transform: scale(1.2);
+        background-color: #6793fb;
+        box-shadow: 0 0 0 10px rgba(178, 212, 252, 0);
+    }
+    100% 
+    {
+        transform: scale(0.8);
+        background-color: #b3d4fc;
+        box-shadow: 0 0 0 0 rgba(178, 212, 252, 0.7);
+    }
+}
