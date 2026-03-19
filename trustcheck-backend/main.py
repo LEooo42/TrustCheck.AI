@@ -1,6 +1,7 @@
 """
-TrustCheck.AI — FastAPI Back-End
-POST /v1/analyze  →  analyzes ad text + images against platform policies
+Welcome!
+TrustCheck.AI - FastAPI Back-End
+POST /v1/analyze -> analyzes ad text + images against platform policies
 """
 
 from dotenv import load_dotenv
@@ -20,32 +21,34 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 
-# ── Logging ──────────────────────────────────────────────────────────────────
+# logging setup
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("trustcheck")
 
-# ── App ───────────────────────────────────────────────────────────────────────
+# app setup
 app = FastAPI(
     title="TrustCheck.AI",
     description="Ad compliance checker powered by Claude AI",
     version="1.0.0",
 )
 
+# CORS setup
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # tighten to your domain in production
+    allow_origins=["*"], 
     allow_methods=["*"],
     allow_headers=["*"],
+    # TODO: edit in prod
 )
 
-# ── Anthropic client ──────────────────────────────────────────────────────────
+# client setup 
 api_key = os.getenv("ANTHROPIC_API_KEY")
 if not api_key:
-    raise RuntimeError("ANTHROPIC_API_KEY is not set")
+    raise RuntimeError("ANTHROPIC_API_KEY is not set") 
 
-client = anthropic.Anthropic(api_key=api_key)
+client = anthropic.Anthropic(api_key=api_key) # set api key
 
-# ── Platform policy summaries ─────────────────────────────────────────────────
+# policies:
 PLATFORM_POLICIES: dict[str, str] = {
     "facebook": """
 Facebook / Meta Advertising Policies (key rules):
@@ -75,26 +78,30 @@ Google Ads Policies (key rules):
 """,
 }
 
-# ── Response schema ───────────────────────────────────────────────────────────
+# response classes:
+
+# violation
 class Violation(BaseModel):
     code: str
-    severity: str          # "high" | "medium" | "low"
+    severity: str          # "high" / "medium" / "low"
     rationale: str
     suggested_fix: str
 
+# analysis
 class AnalysisResult(BaseModel):
     summary: str
     violations: list[Violation]
     suggestions: list[str]
 
+# response
 class AnalyzeResponse(BaseModel):
     analysis_id: str
     platform: str
-    score: int             # 0-100, higher = more compliant
-    grade: str             # "pass" | "review" | "fail"
+    score: int             # 0-100 rating
+    grade: str             # "pass" / "review" / "fail"
     result: AnalysisResult
 
-# ── Prompt builder ────────────────────────────────────────────────────────────
+# promt setup 
 def build_prompt(platform: str, ad_text: str, language: str) -> str:
     policy = PLATFORM_POLICIES.get(platform, PLATFORM_POLICIES["google"])
     return f"""You are TrustCheck.AI, an expert advertising compliance auditor.
@@ -136,8 +143,14 @@ Respond ONLY with valid JSON — no extra text, no markdown fences.
   "suggestions": ["<general tip 1>", "<general tip 2>"]
 }}"""
 
-# ── Helper: encode images for Claude ─────────────────────────────────────────
 def encode_image(image_bytes: bytes, media_type: str) -> dict:
+    """
+    Helper function to encode given image into base64 format
+
+    Args:
+        image_bytes (bytes): A number representing the amount of bytes in the image
+        media_type (str): A string representing the type of image
+    """
     return {
         "type": "image",
         "source": {
@@ -147,9 +160,13 @@ def encode_image(image_bytes: bytes, media_type: str) -> dict:
         },
     }
 
-# ── Helper: parse Claude JSON safely ─────────────────────────────────────────
 def parse_claude_json(raw: str) -> dict:
-    # Strip accidental markdown fences
+    """
+    A helper function to parse Claude JSON safely
+
+    Args:
+        raw (str): A string representing raw data
+    """
     cleaned = re.sub(r"```(?:json)?|```", "", raw).strip()
     try:
         return json.loads(cleaned)
@@ -157,7 +174,7 @@ def parse_claude_json(raw: str) -> dict:
         log.error("JSON parse error: %s\nRaw:\n%s", e, raw[:500])
         raise HTTPException(status_code=502, detail="AI returned malformed JSON.")
 
-# ── Main endpoint ─────────────────────────────────────────────────────────────
+# === Main endpoint ===
 @app.post("/v1/analyze", response_model=AnalyzeResponse)
 async def analyze(
     platform: str = Form(..., description="facebook | google"),
@@ -175,12 +192,12 @@ async def analyze(
     if not ad_text.strip():
         raise HTTPException(status_code=400, detail="ad_text must not be empty.")
 
-    # Build message content list
+    # build message content list
     content: list[dict] = []
 
-    # Attach images
+    # attach images
     ALLOWED_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
-    MAX_IMAGE_BYTES = 5 * 1024 * 1024  # 5 MB per image
+    MAX_IMAGE_BYTES = 5 * 1024 * 1024  # 5 MB per image limit
 
     for upload in images:
         if upload.content_type not in ALLOWED_TYPES:
@@ -193,12 +210,12 @@ async def analyze(
             raise HTTPException(status_code=400, detail=f"Image '{upload.filename}' exceeds 5 MB limit.")
         content.append(encode_image(img_bytes, upload.content_type))
 
-    # Add the text prompt last
+    # add the text prompt last
     content.append({"type": "text", "text": build_prompt(platform, ad_text, language)})
 
     log.info("Analyzing ad | platform=%s | images=%d | text_len=%d", platform, len(images), len(ad_text))
 
-    # Call Claude
+    # call Claude
     try:
         response = client.messages.create(
             model="claude-opus-4-5",
@@ -212,7 +229,7 @@ async def analyze(
     raw_text = response.content[0].text
     data = parse_claude_json(raw_text)
 
-    # Validate & coerce
+    # validate & coerce
     score = max(0, min(100, int(data.get("score", 50))))
     grade = data.get("grade", "review")
     if grade not in ("pass", "review", "fail"):
@@ -240,7 +257,7 @@ async def analyze(
         ),
     )
 
-# ── Health check ──────────────────────────────────────────────────────────────
+# === Health check ===
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "TrustCheck.AI"}

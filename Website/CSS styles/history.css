@@ -1,3 +1,20 @@
+
+/* ===========================================================================================================
+Vanta.NET Animated Background
+Block Contains:
+ - #vanta-bg: full-screen fixed canvas for the animated net background
+ - body: transparent so vanta shows through
+===========================================================================================================*/
+
+#vanta-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+}
+
 /* 
 ===========================================================================================================
 Overall Settings
@@ -21,9 +38,14 @@ body
     font-family: 'Poppins', sans-serif;
 
     /* background-color: #131314; */
-    background: #000000;
-    background: linear-gradient(90deg, rgba(0, 0, 0, 1) 0%, rgba(1, 10, 31, 1) 49%, rgba(1, 21, 51, 1) 100%);
+    background: transparent;
     color: white;
+}
+
+html, body {
+    background-color: #030321; /* same as your Vanta background */
+    margin: 0;
+    padding: 0;
 }
 
 /* 
@@ -75,6 +97,13 @@ header
     display: flex;
     align-items: center;
     justify-content: space-between;
+    background: rgba(5, 8, 25, 0.55);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid rgba(56, 133, 241, 0.12);
+    position: sticky;
+    top: 0;
+    z-index: 100;
 }
 
 .wesbite-header-name 
@@ -164,10 +193,13 @@ Block Contains:
 {
     max-width: 800px;
     margin: 50px auto;
-    background-color: rgba(56, 133, 241, 0.04);
+    background: rgba(10, 15, 35, 0.72);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border: 1px solid rgba(56, 133, 241, 0.22);
     border-radius: 20px;
     padding: 40px;
-    box-shadow: 0 0 30px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(56, 133, 241, 0.1);
     animation: fadeIn 0.5s ease;
     text-align: center;
 }
@@ -243,11 +275,16 @@ Block Contains:
     text-align: left;
     margin-top: 20px;
     padding: 20px;
-    border-radius: 12px;
-    /* background-color: #1f1f21; */
-    background: #000000;
-    background: linear-gradient(90deg, rgba(0, 0, 0, 1) 0%, rgba(1, 10, 31, 1) 49%, rgba(1, 21, 51, 1) 100%);
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    background: rgba(6, 12, 35, 0.65);
+    border: 1px solid rgba(56, 133, 241, 0.18);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.history-card:hover {
+    border-color: rgba(56, 133, 241, 0.38);
+    box-shadow: 0 6px 28px rgba(56, 133, 241, 0.12);
 }
 
 .history-card details 
@@ -279,14 +316,17 @@ Block Contains:
 
 .confirm-content 
 {
-    background-color: #1f1f21;
+    background: rgba(10, 15, 35, 0.88);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(56, 133, 241, 0.25);
     color: white;
     padding: 30px;
     border-radius: 16px;
     text-align: center;
     max-width: 400px;
     width: 90%;
-    box-shadow: 0 0 20px rgba(56, 133, 241, 0.3);
+    box-shadow: 0 0 40px rgba(56, 133, 241, 0.2);
 }
 
 .popup-buttons 
