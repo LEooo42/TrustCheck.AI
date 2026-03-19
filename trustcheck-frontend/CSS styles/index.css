@@ -614,7 +614,7 @@ Block Contains:
 }
 .issue-list li.empty::before { background: #334; }
 
-.ai-modal__footer { display: flex; justify-content: flex-end; padding: 14px 22px 18px; }
+.ai-modal__footer { display: flex; align-items: center; justify-content: space-between; padding: 14px 22px 18px; gap: 12px; flex-wrap: wrap; }
 .ai-modal__copy-btn 
 {
     display: inline-flex; align-items: center; gap: 8px;
@@ -716,6 +716,7 @@ Animation Settings
 /* ===========================================================================================================
 Auth Modal Styles
 ===========================================================================================================*/
+
 .auth-overlay 
 {
     position: fixed;
@@ -777,7 +778,6 @@ Auth Modal Styles
     justify-content: center;
     transition: all 0.18s ease;
 }
-
 .auth-modal__close svg { width: 12px; height: 12px; }
 .auth-modal__close:hover 
 {
@@ -933,7 +933,7 @@ Auth Modal Styles
     transition: background-color 0.2s ease, transform 0.15s ease;
 }
 
-.auth-submit:hover 
+.auth-submit:hover
 {
     background: #0b59c7;
     transform: translateY(-1px);
@@ -953,17 +953,126 @@ Auth Modal Styles
     border: 1px solid rgba(56, 133, 241, 0.35) !important;
 }
 
-.auth-avatar 
+.auth-avatar
 {
-    width: 22px;
-    height: 22px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     background: #3885f1;
     color: #fff;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    box-shadow: 0 0 0 2px rgba(56,133,241,0.35);
+}
+
+/* ===========================================================================================================
+Result Modal — Feedback & Bookmark
+===========================================================================================================*/
+
+.ai-modal__footer-left 
+{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.feedback-group 
+{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 4px;
+}
+
+.feedback-label 
+{
+    font-size: 12px;
+    color: #445;
+    white-space: nowrap;
+}
+
+.feedback-btn 
+{
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.04);
+    color: #556;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.18s ease;
+    flex-shrink: 0;
+}
+.feedback-btn svg { width: 14px; height: 14px; }
+.feedback-btn:hover { background: rgba(255,255,255,0.08); color: #aab; border-color: rgba(255,255,255,0.16); }
+
+.feedback-btn--liked 
+{
+    background: rgba(57, 217, 138, 0.12) !important;
+    border-color: rgba(57, 217, 138, 0.35) !important;
+    color: #39d98a !important;
+}
+
+.feedback-btn--disliked 
+{
+    background: rgba(255, 107, 107, 0.12) !important;
+    border-color: rgba(255, 107, 107, 0.35) !important;
+    color: #ff6b6b !important;
+}
+
+.bookmark-btn 
+{
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.04);
+    color: #556;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: 'Poppins', sans-serif;
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+.bookmark-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
+.bookmark-btn:hover 
+{
+    background: rgba(255, 209, 102, 0.08);
+    border-color: rgba(255, 209, 102, 0.28);
+    color: #ffd166;
+}
+
+.bookmark-btn--saved 
+{
+    background: rgba(255, 209, 102, 0.1) !important;
+    border-color: rgba(255, 209, 102, 0.35) !important;
+    color: #ffd166 !important;
+}
+
+.bookmark-btn--saved svg 
+{
+    fill: #ffd166;
+}
+
+.bookmark-btn--locked 
+{
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.bookmark-btn--locked:hover 
+{
+    background: rgba(255,255,255,0.04) !important;
+    border-color: rgba(255,255,255,0.08) !important;
+    color: #556 !important;
 }

@@ -21,7 +21,6 @@ const platformSelect = document.getElementById("platformSelect");
 const analyzeBtn = document.getElementById("analyzeButton");
 const loadingDots = document.getElementById("loadingDots");
 
-// Optional (only if exists in your HTML)
 const imagePreview = document.getElementById("imagePreview");
 
 /* ---------- utils ---------- */
@@ -146,7 +145,6 @@ function showImagePreviews(files) {
     reader.readAsDataURL(file);
   });
 
-  // Optional single preview (first image)
   if (imagePreview) {
     const first = arr.find(f => f.type.startsWith("image/"));
     if (!first) {
@@ -251,7 +249,7 @@ function adaptV1ResultToUi(apiResult) {
 
 /* ---------- popup UI (your existing functions) ---------- */
 
-function showPopup(result) {
+function showPopup(result, apiResult = {}) {
   if (!result || Object.keys(result).length === 0) return;
 
   const popup = document.getElementById("aiResultPopup");
@@ -298,6 +296,93 @@ function showPopup(result) {
 
   document.getElementById("copyReportBtn").onclick = () =>
     copyReport({ score, verdict, platform, result });
+
+  // ── Feedback (like / dislike) ───────────────────────────────
+  const likeBtn    = document.getElementById("feedbackLike");
+  const dislikeBtn = document.getElementById("feedbackDislike");
+
+  function resetFeedback() {
+    likeBtn.classList.remove("feedback-btn--liked");
+    dislikeBtn.classList.remove("feedback-btn--disliked");
+  }
+
+  likeBtn.onclick = () => {
+    const wasLiked = likeBtn.classList.contains("feedback-btn--liked");
+    resetFeedback();
+    if (!wasLiked) {
+      likeBtn.classList.add("feedback-btn--liked");
+      // TODO: POST /v1/feedback { analysis_id, rating: "like" }
+    }
+  };
+
+  dislikeBtn.onclick = () => {
+    const wasDisliked = dislikeBtn.classList.contains("feedback-btn--disliked");
+    resetFeedback();
+    if (!wasDisliked) {
+      dislikeBtn.classList.add("feedback-btn--disliked");
+      // TODO: POST /v1/feedback { analysis_id, rating: "dislike" }
+    }
+  };
+
+  resetFeedback(); // clear state from any previous analysis
+
+  // ── Bookmark (account-gated) ────────────────────────────────
+  const bookmarkBtn   = document.getElementById("bookmarkBtn");
+  const bookmarkLabel = document.getElementById("bookmarkLabel");
+
+  const session = JSON.parse(localStorage.getItem("tc_session") || "null");
+
+  if (!session) {
+    // Not logged in — show locked state with tooltip hint
+    bookmarkBtn.classList.add("bookmark-btn--locked");
+    bookmarkLabel.textContent = "Log in to bookmark";
+    bookmarkBtn.onclick = () => {
+      bookmarkBtn.title = "Create an account to save analyses";
+      bookmarkBtn.style.animation = "none";
+      setTimeout(() => bookmarkBtn.style.animation = "", 100);
+    };
+  } else {
+    bookmarkBtn.classList.remove("bookmark-btn--locked");
+
+    // Check if this analysis is already bookmarked
+    const bookmarkKey = "tc_bookmarks_" + session.email;
+    const bookmarks   = JSON.parse(localStorage.getItem(bookmarkKey) || "[]");
+    const currentId   = apiResult?.analysis_id || null;
+
+    const isBookmarked = currentId && bookmarks.some(b => b.id === currentId);
+    if (isBookmarked) {
+      bookmarkBtn.classList.add("bookmark-btn--saved");
+      bookmarkLabel.textContent = "Bookmarked";
+    } else {
+      bookmarkBtn.classList.remove("bookmark-btn--saved");
+      bookmarkLabel.textContent = "Bookmark";
+    }
+
+    bookmarkBtn.onclick = () => {
+      const saved = bookmarks.some(b => b.id === currentId);
+      if (saved) {
+        const updated = bookmarks.filter(b => b.id !== currentId);
+        localStorage.setItem(bookmarkKey, JSON.stringify(updated));
+        bookmarkBtn.classList.remove("bookmark-btn--saved");
+        bookmarkLabel.textContent = "Bookmark";
+        // TODO: DELETE /v1/bookmarks/:analysis_id
+      } else {
+        // Save
+        bookmarks.unshift({
+          id: currentId,
+          timestamp: new Date().toISOString(),
+          platform,
+          score,
+          verdict,
+          summary: result.summary || "",
+        });
+        localStorage.setItem(bookmarkKey, JSON.stringify(bookmarks.slice(0, 100)));
+        bookmarkBtn.classList.add("bookmark-btn--saved");
+        bookmarkLabel.textContent = "Bookmarked";
+        // TODO: POST /v1/bookmarks { analysis_id, ... }
+      }
+    };
+  }
 }
 
 function closePopup() {
@@ -474,7 +559,7 @@ analyzeBtn.addEventListener("click", async () => {
     const apiResult = await response.json();
     const uiResult = adaptV1ResultToUi(apiResult);
 
-    showPopup(uiResult);
+    showPopup(uiResult, apiResult);
 
     pushHistory({
       timestamp: new Date().toISOString(),
