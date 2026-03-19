@@ -82,60 +82,128 @@
         </div>
     </div> -->
 
-    <!-- AI Result Modal -->
+    <!-- AI Result Modal (Refactored) -->
     <div id="aiResultPopup" class="ai-popup hidden">
-        <div class="ai-popup-content ai-card">
-            <div class="ai-head">
-                <h2>AI Review Result</h2>
-                <div class="ai-head-right">
-                    <span id="verdictBadge" class="badge">—</span>
-                    <button class="ai-close-btn" onclick="closePopup()" aria-label="Close">✖</button>
+        <div class="ai-modal">
+
+            <!-- Header bar -->
+            <div class="ai-modal__header">
+                <div class="ai-modal__title-group">
+                    <svg class="ai-modal__icon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="10" cy="10" r="9" stroke="#3885f1" stroke-width="1.5"/>
+                        <path d="M6.5 10.5l2.5 2.5 4.5-5" stroke="#3885f1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span class="ai-modal__title">Analysis Report</span>
+                </div>
+                <div class="ai-modal__header-right">
+                    <span id="verdictBadge" class="verdict-pill">—</span>
+                    <button class="ai-modal__close" onclick="closePopup()" aria-label="Close">
+                        <svg viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
 
-            <div class="ai-summary">
-                <div class="gauge" id="scoreGauge">
-                    <div class="gauge__value" id="scoreValue">0</div>
-                    <div class="gauge__label">Compliance</div>
-                </div>
-
-                <div class="ai-meta">
-                    <div class="meta-row">
-                        <span>Platform</span>
-                        <strong id="platformValue">—</strong>
+            <!-- Score + meta strip -->
+            <div class="ai-modal__hero">
+                <div class="score-ring-wrap">
+                    <svg class="score-ring" id="scoreRingSvg" viewBox="0 0 120 120">
+                        <circle class="score-ring__track" cx="60" cy="60" r="50"/>
+                        <circle class="score-ring__fill" id="scoreRingFill" cx="60" cy="60" r="50"
+                                stroke-dasharray="314.16" stroke-dashoffset="314.16"/>
+                    </svg>
+                    <div class="score-ring__center">
+                        <span class="score-ring__num" id="scoreValue">0</span>
+                        <span class="score-ring__sub">/ 100</span>
                     </div>
-                    <div class="meta-row">
-                        <span>Overall</span>
-                        <strong id="overallLabel">—</strong>
+                </div>
+
+                <div class="ai-meta-grid">
+                    <div class="meta-chip">
+                        <span class="meta-chip__label">Platform</span>
+                        <span class="meta-chip__value" id="platformValue">—</span>
+                    </div>
+                    <div class="meta-chip">
+                        <span class="meta-chip__label">Overall</span>
+                        <span class="meta-chip__value" id="overallLabel">—</span>
+                    </div>
+                    <div class="meta-chip meta-chip--wide" id="summaryChip">
+                        <span class="meta-chip__label">Summary</span>
+                        <span class="meta-chip__value meta-chip__value--summary" id="summaryText">—</span>
                     </div>
                 </div>
             </div>
 
-            <div class="ai-grid">
-                <section class="panel">
-                    <h3>Text Violations</h3>
-                    <ul id="textViolations" class="list"></ul>
-                </section>
+            <!-- Divider -->
+            <div class="ai-modal__divider"></div>
 
-                <section class="panel">
-                    <h3>Image Violations</h3>
-                    <ul id="imageViolations" class="list"></ul>
-                </section>
-
-                <section class="panel">
-                    <h3>Text Suggestions</h3>
-                    <ul id="textSuggestions" class="list list--suggestion"></ul>
-                </section>
-
-                <section class="panel">
-                    <h3>Image Suggestions</h3>
-                    <ul id="imageSuggestions" class="list list--suggestion"></ul>
-                </section>
+            <!-- Tabs -->
+            <div class="ai-tabs" role="tablist">
+                <button class="ai-tab ai-tab--active" data-tab="violations" role="tab">
+                    <svg viewBox="0 0 16 16" fill="none"><path d="M8 2L14 13H2L8 2Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 7v3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="11.5" r="0.6" fill="currentColor"/></svg>
+                    Violations
+                    <span class="ai-tab__count" id="violationsCount">0</span>
+                </button>
+                <button class="ai-tab" data-tab="suggestions" role="tab">
+                    <svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="11" r="0.6" fill="currentColor"/></svg>
+                    Suggestions
+                    <span class="ai-tab__count ai-tab__count--blue" id="suggestionsCount">0</span>
+                </button>
             </div>
 
-            <div class="ai-footer">
-                <button class="register-button" id="copyReportBtn">Copy report</button>
+            <!-- Tab panels -->
+            <div class="ai-panels">
+
+                <!-- Violations panel -->
+                <div class="ai-panel ai-panel--active" id="panel-violations">
+                    <div class="panel-cols">
+                        <div class="panel-col">
+                            <p class="panel-col__heading">
+                                <svg viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.2"/><path d="M5 7h4M5 9.5h2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M5 4.5h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+                                Text
+                            </p>
+                            <ul id="textViolations" class="issue-list"></ul>
+                        </div>
+                        <div class="panel-col">
+                            <p class="panel-col__heading">
+                                <svg viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.2"/><path d="M1 9l3-3 2 2 3-3 4 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="4.5" cy="4.5" r="1" stroke="currentColor" stroke-width="1"/></svg>
+                                Image
+                            </p>
+                            <ul id="imageViolations" class="issue-list"></ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Suggestions panel -->
+                <div class="ai-panel" id="panel-suggestions">
+                    <div class="panel-cols">
+                        <div class="panel-col">
+                            <p class="panel-col__heading">
+                                <svg viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.2"/><path d="M5 7h4M5 9.5h2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M5 4.5h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+                                Text
+                            </p>
+                            <ul id="textSuggestions" class="issue-list issue-list--suggestion"></ul>
+                        </div>
+                        <div class="panel-col">
+                            <p class="panel-col__heading">
+                                <svg viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.2"/><path d="M1 9l3-3 2 2 3-3 4 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="4.5" cy="4.5" r="1" stroke="currentColor" stroke-width="1"/></svg>
+                                Image
+                            </p>
+                            <ul id="imageSuggestions" class="issue-list issue-list--suggestion"></ul>
+                        </div>
+                    </div>
+                </div>
             </div>
+
+            <!-- Footer -->
+            <div class="ai-modal__footer">
+                <button class="ai-modal__copy-btn" id="copyReportBtn">
+                    <svg viewBox="0 0 16 16" fill="none"><rect x="5" y="1" width="9" height="11" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M2 5H1.5A1.5 1.5 0 000 6.5v8A1.5 1.5 0 001.5 16h8A1.5 1.5 0 0011 14.5V14" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+                    Copy Report
+                </button>
+            </div>
+
         </div>
     </div>
 
