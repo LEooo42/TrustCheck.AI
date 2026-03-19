@@ -1,6 +1,6 @@
 # TrustCheck.AI
 
-> An AI-powered ad compliance checker that analyzes advertising content against platform policies — built by one curious developer.
+> An AI-powered ad compliance checker that analyzes advertising content against platform policies. Built by one curious developer.
 
 ---
 
@@ -9,7 +9,7 @@
 TrustCheck.AI lets you submit an ad's text and images, choose a target platform, and receive an instant compliance report powered by Claude AI. The report includes:
 
 - A **compliance score** from 0 to 100
-- A **verdict** — Safe, Borderline, or Risky
+- A **verdict** -> Safe, Borderline, or Risky
 - A breakdown of **violations** found in both text and image content, each with severity level and a concrete fix suggestion
 - A list of **general improvement suggestions**
 - A plain-English **summary** of the overall assessment
@@ -108,7 +108,7 @@ The API will be running at **http://127.0.0.1:8000**
 
 ### 4. Open the front-end
 
-Open `Website/HTML pages/index.html` in your browser. The front-end is pre-configured to point to `http://127.0.0.1:8000` — no extra setup needed.
+Open `Website/HTML pages/index.html` in your browser. The front-end is pre-configured to point to `http://127.0.0.1:8000` - no extra setup needed.
 
 ---
 
@@ -157,12 +157,12 @@ Analyzes ad content for platform policy compliance.
 | Grade | Score | Meaning |
 |---|---|---|
 | `pass` | ≥ 80 | Ad is compliant ✅ |
-| `review` | 60 – 79 | Minor issues, review recommended ⚠️ |
+| `review` | 60 - 79 | Minor issues, review recommended ⚠️ |
 | `fail` | < 60 | Significant violations found ❌ |
 
 ### `GET /health`
 
-Returns `{ "status": "ok" }` — use for uptime monitoring.
+Returns `{ "status": "ok" }` - use for uptime monitoring.
 
 ### Interactive docs
 
@@ -172,13 +172,13 @@ While the server is running, visit **http://127.0.0.1:8000/docs** for the full S
 
 ## Features
 
-- **Multi-image support** — upload multiple ad creatives in one submission
+- **Multi-image support** -> upload multiple ad creatives in one submission
 - **Drag & drop** upload interface
-- **Analysis history** — past results saved to `localStorage` and viewable on the History page
-- **Copy report** — one-click copy of the full analysis to clipboard
-- **Animated background** — Vanta.NET interactive net visualization
-- **Responsive design** — works on desktop and mobile
-- **Contact form** — powered by EmailJS, no server required
+- **Analysis history** -> past results saved to `localStorage` and viewable on the History page
+- **Copy report** -> one-click copy of the full analysis to clipboard
+- **Animated background** -> Vanta.NET interactive net visualization
+- **Responsive design** -> works on desktop and mobile
+- **Contact form** -> powered by EmailJS, no server required
 
 ---
 
@@ -190,9 +190,9 @@ To deploy the back-end, set the `ANTHROPIC_API_KEY` environment variable on your
 |---|---|
 | **Railway** | Connect repo → set env var → deploy |
 | **Render** | Build: `pip install -r requirements.txt` · Start: `uvicorn main:app --host 0.0.0.0 --port $PORT` |
-| **Fly.io** | `fly launch` → `fly secrets set ANTHROPIC_API_KEY=...` |
+| **Fly.io** | `fly launch` -> `fly secrets set ANTHROPIC_API_KEY=...` |
 
-The front-end is static HTML — deploy it on **GitHub Pages**, **Netlify**, or **Vercel** for free.
+The front-end is static HTML - deploy it on **GitHub Pages**, **Netlify**, or **Vercel** for free.
 
 ---
 
