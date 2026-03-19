@@ -651,7 +651,6 @@ Auth Modal Styles
     transform: translateY(0);
 }
 
-/* Logged-in button state */
 .register-button--logged-in {
     display: flex;
     align-items: center;

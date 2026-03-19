@@ -35,8 +35,29 @@
             </div>
         </div>
 
-        <div id="clearHistoryContainer" style="display: none; text-align: center; margin-top: 20px;">
-            <button id="clearHistoryBtn" class="register-button">Clear History</button>
+        <div id="historyToolbar" style="display:none;">
+            <div class="history-toolbar">
+                <div class="history-toolbar__left">
+                    <span class="toolbar-label">Sort by</span>
+                    <div class="sort-group">
+                        <button class="sort-btn sort-btn--active" data-sort="newest">Newest</button>
+                        <button class="sort-btn" data-sort="oldest">Oldest</button>
+                        <button class="sort-btn" data-sort="score-high">Score ↑</button>
+                        <button class="sort-btn" data-sort="score-low">Score ↓</button>
+                    </div>
+                    <div class="filter-group">
+                        <select id="platformFilter" class="platform-filter">
+                            <option value="all">All platforms</option>
+                            <option value="facebook">Facebook</option>
+                            <option value="google">Google</option>
+                        </select>
+                    </div>
+                </div>
+                <button id="clearHistoryBtn" class="clear-btn">
+                    <svg viewBox="0 0 16 16" fill="none"><path d="M2 4h12M5 4V2h6v2M6 7v5M10 7v5M3 4l1 10h8l1-10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Clear All
+                </button>
+            </div>
         </div>
     </main>
 

@@ -717,8 +717,7 @@ Animation Settings
 Auth Modal Styles
 ===========================================================================================================*/
 
-.auth-overlay 
-{
+.auth-overlay {
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.75);
@@ -732,19 +731,14 @@ Auth Modal Styles
     opacity: 0;
     transition: opacity 0.2s ease;
 }
-
-.auth-overlay.active 
-{
+.auth-overlay.active {
     opacity: 1;
 }
-
-.auth-overlay.hidden 
-{
+.auth-overlay.hidden {
     display: none;
 }
 
-.auth-modal 
-{
+.auth-modal {
     background: #13141a;
     border: 1px solid rgba(56, 133, 241, 0.22);
     border-radius: 20px;
@@ -755,14 +749,12 @@ Auth Modal Styles
     animation: authModalIn 0.22s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-@keyframes authModalIn 
-{
+@keyframes authModalIn {
     from { opacity: 0; transform: translateY(14px) scale(0.97); }
     to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-.auth-modal__close 
-{
+.auth-modal__close {
     position: absolute;
     top: 14px;
     right: 14px;
@@ -779,40 +771,32 @@ Auth Modal Styles
     transition: all 0.18s ease;
 }
 .auth-modal__close svg { width: 12px; height: 12px; }
-.auth-modal__close:hover 
-{
+.auth-modal__close:hover {
     background: rgba(255, 80, 80, 0.12);
     border-color: rgba(255, 80, 80, 0.3);
     color: #ff6b6b;
 }
 
-.auth-modal__brand 
-{
+.auth-modal__brand {
     text-align: center;
     margin-bottom: 24px;
 }
-
-.auth-modal__logo 
-{
+.auth-modal__logo {
     font-size: 22px;
     font-weight: 700;
     color: #fff;
 }
-
-.auth-modal__logo span 
-{
+.auth-modal__logo span {
     color: #3885f1;
 }
-
-.auth-modal__tagline 
-{
+.auth-modal__tagline {
     font-size: 13px;
     color: #556;
     margin-top: 4px;
 }
 
-.auth-tabs 
-{
+/* Tabs */
+.auth-tabs {
     display: flex;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(56, 133, 241, 0.15);
@@ -821,9 +805,7 @@ Auth Modal Styles
     margin-bottom: 24px;
     gap: 4px;
 }
-
-.auth-tab 
-{
+.auth-tab {
     flex: 1;
     padding: 8px;
     border: none;
@@ -836,49 +818,38 @@ Auth Modal Styles
     cursor: pointer;
     transition: all 0.18s ease;
 }
-
-.auth-tab--active 
-{
+.auth-tab--active {
     background: #3885f1;
     color: #fff;
 }
-
-.auth-tab:not(.auth-tab--active):hover 
-{
+.auth-tab:not(.auth-tab--active):hover {
     color: #aab;
     background: rgba(255, 255, 255, 0.06);
 }
 
-.auth-form 
-{
+/* Forms */
+.auth-form {
     display: none;
     flex-direction: column;
     gap: 16px;
 }
-
-.auth-form--active 
-{
+.auth-form--active {
     display: flex;
 }
 
-.auth-field 
-{
+.auth-field {
     display: flex;
     flex-direction: column;
     gap: 6px;
 }
-
-.auth-field label 
-{
+.auth-field label {
     font-size: 12px;
     font-weight: 500;
     color: #778;
     text-transform: uppercase;
     letter-spacing: 0.06em;
 }
-
-.auth-field input 
-{
+.auth-field input {
     width: 100%;
     padding: 11px 14px;
     border-radius: 10px;
@@ -890,19 +861,14 @@ Auth Modal Styles
     outline: none;
     transition: border-color 0.2s ease;
 }
-
-.auth-field input::placeholder 
-{
+.auth-field input::placeholder {
     color: #334;
 }
-
-.auth-field input:focus 
-{
+.auth-field input:focus {
     border-color: rgba(56, 133, 241, 0.6);
 }
 
-.auth-error 
-{
+.auth-error {
     font-size: 12px;
     color: #ff6b6b;
     background: rgba(255, 107, 107, 0.08);
@@ -911,14 +877,11 @@ Auth Modal Styles
     padding: 8px 12px;
     margin: 0;
 }
-
-.auth-error.hidden 
-{
+.auth-error.hidden {
     display: none;
 }
 
-.auth-submit 
-{
+.auth-submit {
     width: 100%;
     padding: 12px;
     border-radius: 10px;
@@ -932,29 +895,23 @@ Auth Modal Styles
     margin-top: 4px;
     transition: background-color 0.2s ease, transform 0.15s ease;
 }
-
-.auth-submit:hover
-{
+.auth-submit:hover {
     background: #0b59c7;
     transform: translateY(-1px);
 }
-
-.auth-submit:active 
-{
+.auth-submit:active {
     transform: translateY(0);
 }
 
-.register-button--logged-in 
-{
+/* Logged-in button state */
+.register-button--logged-in {
     display: flex;
     align-items: center;
     gap: 8px;
     background-color: rgba(56, 133, 241, 0.15) !important;
     border: 1px solid rgba(56, 133, 241, 0.35) !important;
 }
-
-.auth-avatar
-{
+.auth-avatar {
     width: 28px;
     height: 28px;
     border-radius: 50%;
@@ -973,31 +930,26 @@ Auth Modal Styles
 Result Modal — Feedback & Bookmark
 ===========================================================================================================*/
 
-.ai-modal__footer-left 
-{
+.ai-modal__footer-left {
     display: flex;
     align-items: center;
     gap: 10px;
     flex-wrap: wrap;
 }
 
-.feedback-group 
-{
+/* Feedback group */
+.feedback-group {
     display: flex;
     align-items: center;
     gap: 6px;
     padding: 0 4px;
 }
-
-.feedback-label 
-{
+.feedback-label {
     font-size: 12px;
     color: #445;
     white-space: nowrap;
 }
-
-.feedback-btn 
-{
+.feedback-btn {
     width: 32px;
     height: 32px;
     border-radius: 8px;
@@ -1014,22 +966,21 @@ Result Modal — Feedback & Bookmark
 .feedback-btn svg { width: 14px; height: 14px; }
 .feedback-btn:hover { background: rgba(255,255,255,0.08); color: #aab; border-color: rgba(255,255,255,0.16); }
 
-.feedback-btn--liked 
-{
+/* Like active */
+.feedback-btn--liked {
     background: rgba(57, 217, 138, 0.12) !important;
     border-color: rgba(57, 217, 138, 0.35) !important;
     color: #39d98a !important;
 }
-
-.feedback-btn--disliked 
-{
+/* Dislike active */
+.feedback-btn--disliked {
     background: rgba(255, 107, 107, 0.12) !important;
     border-color: rgba(255, 107, 107, 0.35) !important;
     color: #ff6b6b !important;
 }
 
-.bookmark-btn 
-{
+/* Bookmark button */
+.bookmark-btn {
     display: inline-flex;
     align-items: center;
     gap: 7px;
@@ -1045,33 +996,26 @@ Result Modal — Feedback & Bookmark
     transition: all 0.18s ease;
 }
 .bookmark-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
-.bookmark-btn:hover 
-{
+.bookmark-btn:hover {
     background: rgba(255, 209, 102, 0.08);
     border-color: rgba(255, 209, 102, 0.28);
     color: #ffd166;
 }
-
-.bookmark-btn--saved 
-{
+/* Bookmarked state */
+.bookmark-btn--saved {
     background: rgba(255, 209, 102, 0.1) !important;
     border-color: rgba(255, 209, 102, 0.35) !important;
     color: #ffd166 !important;
 }
-
-.bookmark-btn--saved svg 
-{
+.bookmark-btn--saved svg {
     fill: #ffd166;
 }
-
-.bookmark-btn--locked 
-{
+/* Locked (not logged in) */
+.bookmark-btn--locked {
     opacity: 0.45;
     cursor: not-allowed;
 }
-
-.bookmark-btn--locked:hover 
-{
+.bookmark-btn--locked:hover {
     background: rgba(255,255,255,0.04) !important;
     border-color: rgba(255,255,255,0.08) !important;
     color: #556 !important;

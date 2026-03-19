@@ -21,6 +21,7 @@ const platformSelect = document.getElementById("platformSelect");
 const analyzeBtn = document.getElementById("analyzeButton");
 const loadingDots = document.getElementById("loadingDots");
 
+// Optional (only if exists in your HTML)
 const imagePreview = document.getElementById("imagePreview");
 
 /* ---------- utils ---------- */
@@ -145,6 +146,7 @@ function showImagePreviews(files) {
     reader.readAsDataURL(file);
   });
 
+  // Optional single preview (first image)
   if (imagePreview) {
     const first = arr.find(f => f.type.startsWith("image/"));
     if (!first) {
@@ -330,6 +332,7 @@ function showPopup(result, apiResult = {}) {
   const bookmarkBtn   = document.getElementById("bookmarkBtn");
   const bookmarkLabel = document.getElementById("bookmarkLabel");
 
+  // Check if a user is logged in (set by auth.js)
   const session = JSON.parse(localStorage.getItem("tc_session") || "null");
 
   if (!session) {
@@ -361,6 +364,7 @@ function showPopup(result, apiResult = {}) {
     bookmarkBtn.onclick = () => {
       const saved = bookmarks.some(b => b.id === currentId);
       if (saved) {
+        // Remove
         const updated = bookmarks.filter(b => b.id !== currentId);
         localStorage.setItem(bookmarkKey, JSON.stringify(updated));
         bookmarkBtn.classList.remove("bookmark-btn--saved");

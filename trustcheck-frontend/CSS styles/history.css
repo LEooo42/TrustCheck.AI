@@ -404,7 +404,8 @@ Animation Settings
 Auth Modal Styles
 ===========================================================================================================*/
 
-.auth-overlay {
+.auth-overlay 
+{
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.75);
@@ -418,14 +419,17 @@ Auth Modal Styles
     opacity: 0;
     transition: opacity 0.2s ease;
 }
-.auth-overlay.active {
+.auth-overlay.active 
+{
     opacity: 1;
 }
-.auth-overlay.hidden {
+.auth-overlay.hidden 
+{
     display: none;
 }
 
-.auth-modal {
+.auth-modal 
+{
     background: #13141a;
     border: 1px solid rgba(56, 133, 241, 0.22);
     border-radius: 20px;
@@ -436,12 +440,14 @@ Auth Modal Styles
     animation: authModalIn 0.22s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-@keyframes authModalIn {
+@keyframes authModalIn 
+{
     from { opacity: 0; transform: translateY(14px) scale(0.97); }
     to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-.auth-modal__close {
+.auth-modal__close
+{
     position: absolute;
     top: 14px;
     right: 14px;
@@ -458,32 +464,37 @@ Auth Modal Styles
     transition: all 0.18s ease;
 }
 .auth-modal__close svg { width: 12px; height: 12px; }
-.auth-modal__close:hover {
+.auth-modal__close:hover 
+{
     background: rgba(255, 80, 80, 0.12);
     border-color: rgba(255, 80, 80, 0.3);
     color: #ff6b6b;
 }
 
-.auth-modal__brand {
+.auth-modal__brand 
+{
     text-align: center;
     margin-bottom: 24px;
 }
-.auth-modal__logo {
+.auth-modal__logo 
+{
     font-size: 22px;
     font-weight: 700;
     color: #fff;
 }
-.auth-modal__logo span {
+.auth-modal__logo span 
+{
     color: #3885f1;
 }
-.auth-modal__tagline {
+.auth-modal__tagline 
+{
     font-size: 13px;
     color: #556;
     margin-top: 4px;
 }
 
-/* Tabs */
-.auth-tabs {
+.auth-tabs 
+{
     display: flex;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(56, 133, 241, 0.15);
@@ -492,7 +503,8 @@ Auth Modal Styles
     margin-bottom: 24px;
     gap: 4px;
 }
-.auth-tab {
+.auth-tab 
+{
     flex: 1;
     padding: 8px;
     border: none;
@@ -505,38 +517,44 @@ Auth Modal Styles
     cursor: pointer;
     transition: all 0.18s ease;
 }
-.auth-tab--active {
+.auth-tab--active 
+{
     background: #3885f1;
     color: #fff;
 }
-.auth-tab:not(.auth-tab--active):hover {
+.auth-tab:not(.auth-tab--active):hover 
+{
     color: #aab;
     background: rgba(255, 255, 255, 0.06);
 }
 
-/* Forms */
-.auth-form {
+.auth-form 
+{
     display: none;
     flex-direction: column;
     gap: 16px;
 }
-.auth-form--active {
+.auth-form--active 
+{
     display: flex;
 }
 
-.auth-field {
+.auth-field 
+{
     display: flex;
     flex-direction: column;
     gap: 6px;
 }
-.auth-field label {
+.auth-field label 
+{
     font-size: 12px;
     font-weight: 500;
     color: #778;
     text-transform: uppercase;
     letter-spacing: 0.06em;
 }
-.auth-field input {
+.auth-field input 
+{
     width: 100%;
     padding: 11px 14px;
     border-radius: 10px;
@@ -548,14 +566,17 @@ Auth Modal Styles
     outline: none;
     transition: border-color 0.2s ease;
 }
-.auth-field input::placeholder {
+.auth-field input::placeholder 
+{
     color: #334;
 }
-.auth-field input:focus {
+.auth-field input:focus 
+{
     border-color: rgba(56, 133, 241, 0.6);
 }
 
-.auth-error {
+.auth-error 
+{
     font-size: 12px;
     color: #ff6b6b;
     background: rgba(255, 107, 107, 0.08);
@@ -564,11 +585,13 @@ Auth Modal Styles
     padding: 8px 12px;
     margin: 0;
 }
-.auth-error.hidden {
+.auth-error.hidden 
+{
     display: none;
 }
 
-.auth-submit {
+.auth-submit 
+{
     width: 100%;
     padding: 12px;
     border-radius: 10px;
@@ -582,23 +605,27 @@ Auth Modal Styles
     margin-top: 4px;
     transition: background-color 0.2s ease, transform 0.15s ease;
 }
-.auth-submit:hover {
+.auth-submit:hover 
+{
     background: #0b59c7;
     transform: translateY(-1px);
 }
-.auth-submit:active {
+.auth-submit:active 
+{
     transform: translateY(0);
 }
 
-/* Logged-in button state */
-.register-button--logged-in {
+.register-button--logged-in 
+{
     display: flex;
     align-items: center;
     gap: 8px;
     background-color: rgba(56, 133, 241, 0.15) !important;
     border: 1px solid rgba(56, 133, 241, 0.35) !important;
 }
-.auth-avatar {
+
+.auth-avatar 
+{
     width: 28px;
     height: 28px;
     border-radius: 50%;
@@ -611,4 +638,316 @@ Auth Modal Styles
     justify-content: center;
     flex-shrink: 0;
     box-shadow: 0 0 0 2px rgba(56,133,241,0.35);
+}
+
+/* ===========================================================================================================
+History Toolbar — Sort & Filter
+===========================================================================================================*/
+
+.history-toolbar 
+{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    background: rgba(10, 15, 35, 0.72);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border: 1px solid rgba(56, 133, 241, 0.2);
+    border-radius: 14px;
+    padding: 12px 16px;
+    margin: 0 auto 24px;
+    max-width: 800px;
+}
+
+.history-toolbar__left 
+{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.toolbar-label 
+{
+    font-size: 12px;
+    color: #445;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+}
+
+.sort-group 
+{
+    display: flex;
+    gap: 4px;
+}
+
+.sort-btn 
+{
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.04);
+    color: #556;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: 'Poppins', sans-serif;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    white-space: nowrap;
+}
+
+.sort-btn:hover 
+{
+    background: rgba(56, 133, 241, 0.08);
+    border-color: rgba(56, 133, 241, 0.2);
+    color: #aab;
+}
+
+.sort-btn--active 
+{
+    background: rgba(56, 133, 241, 0.15);
+    border-color: rgba(56, 133, 241, 0.4);
+    color: #3885f1;
+}
+
+.platform-filter {
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(6, 12, 30, 0.7);
+    color: #aab;
+    font-size: 12px;
+    font-family: 'Poppins', sans-serif;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.18s ease;
+}
+
+.platform-filter:focus 
+{
+    border-color: rgba(56, 133, 241, 0.4);
+}
+
+.clear-btn 
+{
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 14px;
+    border-radius: 9px;
+    border: 1px solid rgba(255, 80, 80, 0.2);
+    background: rgba(255, 80, 80, 0.06);
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: 'Poppins', sans-serif;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    white-space: nowrap;
+}
+
+.clear-btn svg 
+{
+    width: 13px;
+    height: 13px;
+}
+
+.clear-btn:hover 
+{
+    background: rgba(255, 80, 80, 0.14);
+    border-color: rgba(255, 80, 80, 0.4);
+}
+
+.no-results-msg 
+{
+    text-align: center;
+    color: #445;
+    font-size: 14px;
+    font-style: italic;
+    padding: 24px 0;
+}
+
+/* ===========================================================================================================
+History Cards — Redesigned
+===========================================================================================================*/
+
+.hcard__header 
+{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.hcard__meta 
+{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.hcard__platform 
+{
+    font-size: 12px;
+    font-weight: 600;
+    color: #3885f1;
+    background: rgba(56, 133, 241, 0.1);
+    border: 1px solid rgba(56, 133, 241, 0.22);
+    padding: 3px 10px;
+    border-radius: 999px;
+}
+
+.hcard__date 
+{
+    font-size: 11px;
+    color: #445;
+}
+
+.hcard__verdict 
+{
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 4px 11px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+}
+
+.verdict--safe       { color: #39d98a; background: rgba(57,217,138,0.08); border-color: rgba(57,217,138,0.25); }
+.verdict--borderline { color: #ffd166; background: rgba(255,209,102,0.08); border-color: rgba(255,209,102,0.25); }
+.verdict--risky      { color: #ff6b6b; background: rgba(255,107,107,0.08); border-color: rgba(255,107,107,0.25); }
+
+.hcard__score-row 
+{
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 12px;
+}
+
+.hcard__score-ring 
+{
+    position: relative;
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+}
+
+.hring-num 
+{
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.hcard__desc 
+{
+    font-size: 13px;
+    color: #9aa;
+    line-height: 1.5;
+    margin: 0;
+    flex: 1;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.hcard__details 
+{
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    padding-top: 10px;
+    margin-top: 4px;
+}
+
+.hcard__details summary 
+{
+    font-size: 12px;
+    color: #3885f1;
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+}
+
+.hcard__details summary::-webkit-details-marker { display: none; }
+
+.hcard__details summary::before 
+{
+    content: '▶ ';
+    font-size: 9px;
+    transition: transform 0.15s;
+}
+
+.hcard__details[open] summary::before 
+{
+    content: '▼ ';
+}
+
+.hcard__detail-grid 
+{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.hcard__detail-heading 
+{
+    font-size: 11px;
+    font-weight: 600;
+    color: #445;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 0 0 8px;
+}
+
+.hcard__list 
+{
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.hcard__list li 
+{
+    font-size: 12px;
+    color: #9aa;
+    padding: 6px 10px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 0 6px 6px 0;
+    border-left: 2px solid rgba(255,107,107,0.4);
+    line-height: 1.4;
+}
+
+.hcard__list--suggestion li 
+{
+    border-left-color: rgba(56,133,241,0.4);
+}
+
+.hcard__list li.none 
+{
+    color: #334;
+    font-style: italic;
+    border-left-color: rgba(255,255,255,0.06);
+    background: transparent;
+}
+
+@media (max-width: 600px) 
+{
+    .hcard__detail-grid { grid-template-columns: 1fr; }
+    .sort-group { flex-wrap: wrap; }
+    .history-toolbar { flex-direction: column; align-items: flex-start; }
 }
