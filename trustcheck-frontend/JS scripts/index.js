@@ -1,7 +1,3 @@
-/* =========================
-   TrustCheck - improved JS
-   ========================= */
-
 /* ---------- config ---------- */
 
 document.getElementById("year").textContent = new Date().getFullYear();
@@ -10,7 +6,7 @@ const API_BASE = "http://127.0.0.1:8000";
 const ANALYZE_ENDPOINT = `${API_BASE}/v1/analyze`;
 
 const MAX_HISTORY = 50;
-const REQUIRE_IMAGE = true; // set false if you want text-only analysis
+const REQUIRE_IMAGE = true; 
 
 /* ---------- element refs ---------- */
 
@@ -234,7 +230,6 @@ function adaptV1ResultToUi(apiResult) {
     })
   );
 
-  // suggested fixes include per-violation suggested_fix + general suggestions
   const fixLines = [];
   violations.forEach(v => {
     if (v.suggested_fix && String(v.suggested_fix).trim()) fixLines.push(String(v.suggested_fix).trim());
@@ -243,7 +238,6 @@ function adaptV1ResultToUi(apiResult) {
     if (s && String(s).trim()) fixLines.push(String(s).trim());
   });
 
-  // Until backend provides a "source" field (text/image/both), put everything into text buckets
   return {
     score,
     verdict,
@@ -268,17 +262,14 @@ function showPopup(result) {
   const platform = platformSelect.value || "—";
   const verdict = (result.verdict || "").trim() || verdictFromScore(score);
 
-  // Verdict pill
   const pill = document.getElementById("verdictBadge");
   pill.textContent = verdict;
   pill.className = "verdict-pill " + pillClass(verdict);
 
-  // Meta chips
   document.getElementById("platformValue").textContent =
     platform.charAt(0).toUpperCase() + platform.slice(1);
   document.getElementById("overallLabel").textContent = labelFromScore(score);
 
-  // Summary
   const summaryEl = document.getElementById("summaryText");
   if (summaryEl) {
     summaryEl.textContent = result.summary || "—";
@@ -286,16 +277,13 @@ function showPopup(result) {
     if (chip) chip.style.display = result.summary ? "flex" : "none";
   }
 
-  // SVG ring score
   renderRing(score);
 
-  // Fill lists
   fillList("textViolations", sanitizeList(result.text_violations));
   fillList("imageViolations", sanitizeList(result.image_violations));
   fillList("textSuggestions", sanitizeList(result.text_suggestions));
   fillList("imageSuggestions", sanitizeList(result.image_suggestions));
 
-  // Tab counts
   const vCount = sanitizeList(result.text_violations).length +
                  sanitizeList(result.image_violations).length;
   const sCount = sanitizeList(result.text_suggestions).length +
@@ -303,7 +291,6 @@ function showPopup(result) {
   document.getElementById("violationsCount").textContent = vCount;
   document.getElementById("suggestionsCount").textContent = sCount;
 
-  // Reset tabs
   switchTab("violations");
   document.querySelectorAll(".ai-tab").forEach(btn => {
     btn.onclick = () => switchTab(btn.dataset.tab);
@@ -468,7 +455,6 @@ analyzeBtn.addEventListener("click", async () => {
     form.append("language", "auto");
     form.append("ad_text", description);
 
-    // Multiple images supported
     Array.from(fileInput.files).forEach(f => form.append("images", f));
 
     const response = await fetchWithTimeout(ANALYZE_ENDPOINT, {
@@ -517,7 +503,6 @@ analyzeBtn.addEventListener("click", async () => {
 
 /* ---------- init ---------- */
 
-// Initial UI state
 updateFileList([]);
 if (imagePreview) imagePreview.style.display = "none";
 validateForm();
