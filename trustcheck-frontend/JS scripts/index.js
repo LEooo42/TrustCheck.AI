@@ -4,6 +4,7 @@ document.getElementById("year").textContent = new Date().getFullYear();
 
 const API_BASE = "http://127.0.0.1:8000";
 const ANALYZE_ENDPOINT = `${API_BASE}/v1/analyze`;
+const RATE_STATUS_ENDPOINT = `${API_BASE}/v1/rate-status`;
 
 const MAX_HISTORY = 50;
 const REQUIRE_IMAGE = true; 
@@ -98,6 +99,39 @@ function pushHistory(item) {
   const storedHistory = JSON.parse(localStorage.getItem("adHistory")) || [];
   storedHistory.unshift(item);
   localStorage.setItem("adHistory", JSON.stringify(storedHistory.slice(0, MAX_HISTORY)));
+}
+
+
+/* ---------- rate limit indicator ---------- */
+
+/*
+Function to fetch and render the rate limit status bar
+Parameters: None
+Returns: None
+*/
+async function updateRateIndicator() {
+  const fill  = document.getElementById("rateBarFill");
+  const label = document.getElementById("rateLabel");
+  if (!fill || !label) return;
+
+  try {
+    const res  = await fetch(RATE_STATUS_ENDPOINT);
+    if (!res.ok) throw new Error("status error");
+    const data = await res.json();
+
+    const { limit, remaining } = data;
+    const pct = Math.round((remaining / limit) * 100);
+
+    fill.style.width = pct + "%";
+    fill.classList.remove("rate-indicator__fill--warn", "rate-indicator__fill--low");
+    if (pct <= 20)      fill.classList.add("rate-indicator__fill--low");
+    else if (pct <= 50) fill.classList.add("rate-indicator__fill--warn");
+
+    label.textContent = `${remaining} / ${limit} analyses left`;
+  } catch {
+    const label = document.getElementById("rateLabel");
+    if (label) label.textContent = "";
+  }
 }
 
 /* ---------- file list + preview ---------- */
@@ -221,31 +255,50 @@ function adaptV1ResultToUi(apiResult) {
   const suggestions = apiResult?.result?.suggestions ?? [];
 
   // readable violation lines
-  const vLines = sanitizeList(
-    violations.map(v => {
-      const sev = (v.severity || "medium").toUpperCase();
-      const code = v.code || "UNKNOWN";
-      const why = v.rationale || "";
-      return `[${sev}] ${code}: ${why}`.trim();
-    })
+  // Format a single violation into a readable string
+  const fmtViolation = v => {
+    const sev  = (v.severity || "medium").toUpperCase();
+    const code = v.code || "UNKNOWN";
+    const why  = v.rationale || "";
+    return `[${sev}] ${code}: ${why}`.trim();
+  };
+
+  // Route violations by their source field (text / image / both)
+  const textViolations  = sanitizeList(
+    violations.filter(v => !v.source || v.source === "text" || v.source === "both").map(fmtViolation)
+  );
+  const imageViolations = sanitizeList(
+    violations.filter(v => v.source === "image" || v.source === "both").map(fmtViolation)
   );
 
-  const fixLines = [];
+  // Collect suggested fixes per source
+  const textFixLines  = [];
+  const imageFixLines = [];
+
   violations.forEach(v => {
-    if (v.suggested_fix && String(v.suggested_fix).trim()) fixLines.push(String(v.suggested_fix).trim());
+    const fix = v.suggested_fix && String(v.suggested_fix).trim();
+    if (!fix) return;
+    if (v.source === "image") imageFixLines.push(fix);
+    else textFixLines.push(fix);
   });
-  suggestions.forEach(s => {
-    if (s && String(s).trim()) fixLines.push(String(s).trim());
-  });
+
+  // Use pre-split suggestions from backend if available, otherwise fall back to flat list
+  const result = apiResult?.result ?? {};
+  if (result.text_suggestions?.length || result.image_suggestions?.length) {
+    (result.text_suggestions  || []).forEach(s => { if (s) textFixLines.push(String(s).trim()); });
+    (result.image_suggestions || []).forEach(s => { if (s) imageFixLines.push(String(s).trim()); });
+  } else {
+    suggestions.forEach(s => { if (s) textFixLines.push(String(s).trim()); });
+  }
 
   return {
     score,
     verdict,
-    summary: String(apiResult?.result?.summary || ""),
-    text_violations: vLines,
-    image_violations: [],
-    text_suggestions: sanitizeList(fixLines),
-    image_suggestions: []
+    summary: String(result.summary || ""),
+    text_violations:  textViolations,
+    image_violations: imageViolations,
+    text_suggestions:  sanitizeList(textFixLines),
+    image_suggestions: sanitizeList(imageFixLines)
   };
 }
 
@@ -555,7 +608,11 @@ analyzeBtn.addEventListener("click", async () => {
       let detail = `Request failed (${response.status})`;
       try {
         const err = await response.json();
-        if (err?.detail) detail = err.detail;
+        if (response.status === 429 && err?.detail?.message) {
+          detail = err.detail.message;
+        } else if (err?.detail) {
+          detail = typeof err.detail === "string" ? err.detail : JSON.stringify(err.detail);
+        }
       } catch {}
       throw new Error(detail);
     }
@@ -564,6 +621,8 @@ analyzeBtn.addEventListener("click", async () => {
     const uiResult = adaptV1ResultToUi(apiResult);
 
     showPopup(uiResult, apiResult);
+
+    updateRateIndicator();
 
     pushHistory({
       timestamp: new Date().toISOString(),

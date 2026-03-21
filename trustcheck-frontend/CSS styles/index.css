@@ -1020,3 +1020,40 @@ Result Modal — Feedback & Bookmark
     border-color: rgba(255,255,255,0.08) !important;
     color: #556 !important;
 }
+
+/* ===========================================================================================================
+Rate Limit Indicator
+===========================================================================================================*/
+
+.rate-indicator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.rate-indicator__bar {
+    flex: 1;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.rate-indicator__fill {
+    height: 100%;
+    width: 100%;
+    border-radius: 999px;
+    background: #3885f1;
+    transition: width 0.5s ease, background-color 0.4s ease;
+}
+
+.rate-indicator__fill--warn  { background: #ffd166; }
+.rate-indicator__fill--low   { background: #ff6b6b; }
+
+.rate-indicator__label {
+    font-size: 11px;
+    color: #556;
+    white-space: nowrap;
+    min-width: 90px;
+    text-align: right;
+}
