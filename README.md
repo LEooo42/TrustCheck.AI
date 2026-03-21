@@ -200,7 +200,7 @@ The front-end is static HTML - deploy it on **GitHub Pages**, **Netlify**, or **
 
 | Variable | Description |
 |---|---|
-| `ANTHROPIC_API_KEY` | Your Anthropic API key — get one at [console.anthropic.com](https://console.anthropic.com) |
+| `ANTHROPIC_API_KEY` | Your Anthropic API key. Get one at [console.anthropic.com](https://console.anthropic.com) |
 
 ---
 
