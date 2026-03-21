@@ -188,7 +188,7 @@ To deploy the back-end, set the `ANTHROPIC_API_KEY` environment variable on your
 
 | Platform | Notes |
 |---|---|
-| **Railway** | Connect repo → set env var → deploy |
+| **Railway** | Connect repo -> set env var -> deploy |
 | **Render** | Build: `pip install -r requirements.txt` · Start: `uvicorn main:app --host 0.0.0.0 --port $PORT` |
 | **Fly.io** | `fly launch` -> `fly secrets set ANTHROPIC_API_KEY=...` |
 
@@ -200,7 +200,7 @@ The front-end is static HTML - deploy it on **GitHub Pages**, **Netlify**, or **
 
 | Variable | Description |
 |---|---|
-| `ANTHROPIC_API_KEY` | Your Anthropic API key — get one at [console.anthropic.com](https://console.anthropic.com) |
+| `ANTHROPIC_API_KEY` | Your Anthropic API key. Get one at [console.anthropic.com](https://console.anthropic.com) |
 
 ---
 
