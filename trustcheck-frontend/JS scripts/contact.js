@@ -47,7 +47,7 @@ Block Contains:
 */
 
 (function() {
-  emailjs.init("0slvH8QVP6B_8NgcO");
+  emailjs.init("hEQMW1kEwHHpV3DvS");
 })();
 
 /* 
@@ -129,8 +129,8 @@ form.addEventListener("submit", function (e)
   EmailJS Send Logic
   ===========================================================================================================
   */
-
-  emailjs.send("service_obwp6eu", "template_crpdttk", 
+  console.log("Sending with:", "service_cgtidx5", "template_kagf4cu");
+  emailjs.send("service_cgtidx5", "template_kagf4cu", 
   {
     name: name.value,
     email: email.value,

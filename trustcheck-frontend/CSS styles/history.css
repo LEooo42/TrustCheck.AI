@@ -951,3 +951,43 @@ History Cards — Redesigned
     .sort-group { flex-wrap: wrap; }
     .history-toolbar { flex-direction: column; align-items: flex-start; }
 }
+
+/* ===========================================================================================================
+Per-card delete button + header-right layout
+===========================================================================================================*/
+
+.hcard__header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.hcard__delete-btn {
+    width: 26px;
+    height: 26px;
+    border: 1px solid rgba(255, 80, 80, 0.2);
+    border-radius: 7px;
+    background: rgba(255, 80, 80, 0.06);
+    color: #ff6b6b;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.18s ease;
+    opacity: 0;
+}
+
+.history-card:hover .hcard__delete-btn {
+    opacity: 1;
+}
+
+.hcard__delete-btn svg {
+    width: 13px;
+    height: 13px;
+}
+
+.hcard__delete-btn:hover {
+    background: rgba(255, 80, 80, 0.16);
+    border-color: rgba(255, 80, 80, 0.45);
+}

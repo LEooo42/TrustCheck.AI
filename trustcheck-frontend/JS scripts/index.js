@@ -7,7 +7,7 @@ const ANALYZE_ENDPOINT = `${API_BASE}/v1/analyze`;
 const RATE_STATUS_ENDPOINT = `${API_BASE}/v1/rate-status`;
 
 const MAX_HISTORY = 50;
-const REQUIRE_IMAGE = true; 
+const REQUIRE_IMAGE = false; // image not required in URL mode 
 
 /* ---------- element refs ---------- */
 
@@ -24,6 +24,10 @@ const loadingDots = document.getElementById("loadingDots");
 
 // Optional (only if exists in your HTML)
 const imagePreview = document.getElementById("imagePreview");
+
+// Input mode
+const urlInput = document.getElementById("urlInput");
+let inputMode = "upload"; // "upload" | "url"
 
 /* ---------- utils ---------- */
 
@@ -83,6 +87,35 @@ Parameters:
 Returns:
 - None
 */
+
+/* ---------- input mode switching (upload / url) ---------- */
+
+document.getElementById("modeUploadBtn").addEventListener("click", () => setInputMode("upload"));
+document.getElementById("modeUrlBtn").addEventListener("click",   () => setInputMode("url"));
+
+function setInputMode(mode) {
+  inputMode = mode;
+
+  document.getElementById("modeUploadBtn").classList.toggle("mode-btn--active", mode === "upload");
+  document.getElementById("modeUrlBtn").classList.toggle("mode-btn--active",   mode === "url");
+
+  document.getElementById("inputModeUpload").style.display = mode === "upload" ? "" : "none";
+  document.getElementById("inputModeUrl").style.display   = mode === "url"    ? "" : "none";
+
+  validateForm();
+}
+
+function isValidUrl(str) {
+  try {
+    const u = new URL(str.trim());
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+if (urlInput) urlInput.addEventListener("input", validateForm);
+
 function showError(message) {
   console.error(message);
   alert(message);
@@ -225,12 +258,18 @@ Returns:
 - None
 */
 function validateForm() {
-  const hasText = textInput.value.trim().length > 0;
+  const hasText     = textInput.value.trim().length > 0;
   const hasPlatform = platformSelect.value !== "";
-  const hasImage = fileInput.files.length > 0;
 
-  const ok = REQUIRE_IMAGE ? (hasText && hasPlatform && hasImage) : (hasText && hasPlatform);
-  analyzeBtn.disabled = !ok;
+  let inputOk;
+  if (inputMode === "url") {
+    inputOk = isValidUrl(urlInput ? urlInput.value : "");
+  } else {
+    const hasImage = fileInput.files.length > 0;
+    inputOk = REQUIRE_IMAGE ? hasImage : true;
+  }
+
+  analyzeBtn.disabled = !(hasText && hasPlatform && inputOk);
 }
 
 /* ---------- API adaptation (v1 backend -> your UI) ---------- */
@@ -351,6 +390,9 @@ function showPopup(result, apiResult = {}) {
 
   document.getElementById("copyReportBtn").onclick = () =>
     copyReport({ score, verdict, platform, result });
+
+  document.getElementById("exportPdfBtn").onclick = () =>
+    exportToPdf({ score, verdict, platform, result });
 
   // ── Feedback (like / dislike) ───────────────────────────────
   const likeBtn    = document.getElementById("feedbackLike");
@@ -544,6 +586,213 @@ function copyReport({ score, verdict, platform, result }) {
   });
 }
 
+/* ---------- PDF export ---------- */
+
+function exportToPdf({ score, verdict, platform, result }) {
+  if (typeof window.jspdf === "undefined" && typeof window.jsPDF === "undefined") {
+    showError("PDF library not loaded. Please check your internet connection.");
+    return;
+  }
+
+  const { jsPDF } = window.jspdf || window;
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+
+  const W = 210;
+  const MARGIN = 18;
+  const CONTENT_W = W - MARGIN * 2;
+  let y = 0;
+
+  // ── colour helpers ──────────────────────────────────────────
+  const BLUE   = [56,  133, 241];
+  const GREEN  = [39,  217, 138];
+  const YELLOW = [255, 209, 102];
+  const RED    = [255, 107, 107];
+  const DARK   = [19,  20,  26];
+  const MID    = [60,  65,  90];
+  const LIGHT  = [140, 148, 180];
+  const WHITE  = [255, 255, 255];
+
+  function verdictColor(v) {
+    const lv = (v || "").toLowerCase();
+    if (lv.includes("safe") && !lv.includes("border")) return GREEN;
+    if (lv.includes("border")) return YELLOW;
+    return RED;
+  }
+
+  function setFill(rgb)   { doc.setFillColor(rgb[0], rgb[1], rgb[2]); }
+  function setDraw(rgb)   { doc.setDrawColor(rgb[0], rgb[1], rgb[2]); }
+  function setFont(rgb)   { doc.setTextColor(rgb[0], rgb[1], rgb[2]); }
+
+  // ── wrapping helper ─────────────────────────────────────────
+  function addWrappedText(text, x, startY, maxW, lineH, maxY) {
+    const lines = doc.splitTextToSize(String(text || ""), maxW);
+    lines.forEach(line => {
+      if (startY > maxY) { doc.addPage(); startY = MARGIN + 10; }
+      doc.text(line, x, startY);
+      startY += lineH;
+    });
+    return startY;
+  }
+
+  // ── section heading ─────────────────────────────────────────
+  function sectionHeading(label, currentY) {
+    if (currentY > 265) { doc.addPage(); currentY = MARGIN + 10; }
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    setFont(LIGHT);
+    doc.text(label.toUpperCase(), MARGIN, currentY);
+    currentY += 1.5;
+    setDraw([56, 133, 241]);
+    doc.setLineWidth(0.3);
+    doc.line(MARGIN, currentY, MARGIN + CONTENT_W, currentY);
+    return currentY + 5;
+  }
+
+  // ── bullet list ─────────────────────────────────────────────
+  function bulletList(items, currentY, color) {
+    if (!items || items.length === 0) {
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      setFont(LIGHT);
+      doc.text("None", MARGIN + 4, currentY);
+      return currentY + 6;
+    }
+    items.forEach(item => {
+      if (currentY > 270) { doc.addPage(); currentY = MARGIN + 10; }
+      setFill(color);
+      doc.circle(MARGIN + 2, currentY - 1.5, 1, "F");
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      setFont(MID);
+      const lines = doc.splitTextToSize(String(item), CONTENT_W - 7);
+      lines.forEach((line, i) => {
+        if (currentY > 270) { doc.addPage(); currentY = MARGIN + 10; }
+        doc.text(line, MARGIN + 6, currentY);
+        currentY += 5;
+      });
+      currentY += 1;
+    });
+    return currentY;
+  }
+
+  // ══ PAGE 1: Header ═══════════════════════════════════════════
+  // Background header band
+  setFill(DARK);
+  doc.rect(0, 0, W, 52, "F");
+
+  // Logo text
+  doc.setFontSize(20);
+  doc.setFont("helvetica", "bold");
+  setFont(WHITE);
+  doc.text("TrustCheck", MARGIN, 20);
+  doc.setFontSize(20);
+  setFont(BLUE);
+  doc.text(".AI", MARGIN + doc.getTextWidth("TrustCheck"), 20);
+
+  // Subtitle
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  setFont(LIGHT);
+  doc.text("Ad Compliance Analysis Report", MARGIN, 28);
+
+  // Date
+  const dateStr = new Date().toLocaleDateString(undefined, { day: "2-digit", month: "long", year: "numeric" });
+  doc.text(`Generated: ${dateStr}`, MARGIN, 35);
+
+  // Score circle (right side of header)
+  const cx = W - MARGIN - 18, cy = 26, r = 14;
+  const hue = Math.round((score / 100) * 120);
+  const scoreRgb = score >= 80 ? GREEN : score >= 60 ? YELLOW : RED;
+
+  setDraw(scoreRgb);
+  doc.setLineWidth(2.5);
+  doc.circle(cx, cy, r, "S");
+
+  doc.setFontSize(14);
+  doc.setFont("helvetica", "bold");
+  setFont(scoreRgb);
+  const scoreStr = String(score);
+  doc.text(scoreStr, cx - doc.getTextWidth(scoreStr) / 2, cy + 2);
+
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "normal");
+  setFont(LIGHT);
+  doc.text("/ 100", cx - doc.getTextWidth("/ 100") / 2, cy + 7);
+
+  y = 60;
+
+  // ── Meta chips row ──────────────────────────────────────────
+  const chips = [
+    { label: "Platform", value: (platform || "—").charAt(0).toUpperCase() + (platform || "").slice(1) },
+    { label: "Verdict",  value: verdict || "—" },
+    { label: "Score",    value: `${score} / 100` },
+  ];
+  const chipW = (CONTENT_W - 8) / 3;
+  chips.forEach((chip, i) => {
+    const cx2 = MARGIN + i * (chipW + 4);
+    setFill([22, 28, 50]);
+    setDraw([50, 60, 100]);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(cx2, y, chipW, 16, 2, 2, "FD");
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    setFont(LIGHT);
+    doc.text(chip.label.toUpperCase(), cx2 + 4, y + 5.5);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    const vc = chip.label === "Verdict" ? verdictColor(chip.value) : WHITE;
+    setFont(vc);
+    doc.text(chip.value, cx2 + 4, y + 12);
+  });
+  y += 24;
+
+  // ── Summary ─────────────────────────────────────────────────
+  if (result.summary) {
+    y = sectionHeading("Summary", y);
+    doc.setFontSize(9.5);
+    doc.setFont("helvetica", "normal");
+    setFont(MID);
+    y = addWrappedText(result.summary, MARGIN, y, CONTENT_W, 5.5, 275);
+    y += 6;
+  }
+
+  // ── Violations ──────────────────────────────────────────────
+  y = sectionHeading("Text Violations", y);
+  y = bulletList(result.text_violations, y, RED);
+  y += 4;
+
+  y = sectionHeading("Image Violations", y);
+  y = bulletList(result.image_violations, y, RED);
+  y += 4;
+
+  // ── Suggestions ─────────────────────────────────────────────
+  y = sectionHeading("Text Suggestions", y);
+  y = bulletList(result.text_suggestions, y, BLUE);
+  y += 4;
+
+  y = sectionHeading("Image Suggestions", y);
+  y = bulletList(result.image_suggestions, y, BLUE);
+  y += 8;
+
+  // ── Footer on every page ────────────────────────────────────
+  const pageCount = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    setFill([18, 20, 30]);
+    doc.rect(0, 291, W, 10, "F");
+    doc.setFontSize(7.5);
+    doc.setFont("helvetica", "normal");
+    setFont(LIGHT);
+    doc.text("TrustCheck.AI — Powered by Claude AI", MARGIN, 297);
+    doc.text(`Page ${i} of ${pageCount}`, W - MARGIN, 297, { align: "right" });
+  }
+
+  // ── Save ──────────────────────────────────────────────────────
+  const safePlatform = (platform || "report").replace(/[^a-z0-9]/gi, "_");
+  const ts = new Date().toISOString().slice(0, 10);
+  doc.save(`trustcheck_${safePlatform}_${ts}.pdf`);
+}
+
 /* ---------- events ---------- */
 
 dropArea.addEventListener("dragover", e => {
@@ -597,12 +846,23 @@ analyzeBtn.addEventListener("click", async () => {
     form.append("language", "auto");
     form.append("ad_text", description);
 
-    Array.from(fileInput.files).forEach(f => form.append("images", f));
+    if (inputMode === "url") {
+      form.append("ad_url", urlInput.value.trim());
+    } else {
+      Array.from(fileInput.files).forEach(f => form.append("images", f));
+    }
+
+    // Attach auth token if the user is logged in
+    const authHeaders = {};
+    if (window.TC_AUTH && window.TC_AUTH.getToken()) {
+      authHeaders["Authorization"] = "Bearer " + window.TC_AUTH.getToken();
+    }
 
     const response = await fetchWithTimeout(ANALYZE_ENDPOINT, {
       method: "POST",
+      headers: authHeaders,
       body: form
-    }, 30000);
+    }, 45000); // longer timeout for URL fetching
 
     if (!response.ok) {
       let detail = `Request failed (${response.status})`;
