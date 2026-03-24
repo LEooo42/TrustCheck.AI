@@ -1,8 +1,23 @@
-fastapi==0.115.0
-uvicorn[standard]==0.30.6
-anthropic==0.34.2
-python-multipart==0.0.9
-pydantic==2.8.2
+# TrustCheck.AI — Backend Requirements
+# Python 3.11+
+# Install with: pip install -r requirements.txt
+
+# ── Web framework ─────────────────────────────────────────────
+fastapi==0.135.1
+uvicorn==0.42.0
+python-multipart==0.0.22      # Required for FastAPI File/Form upload support
+
+# ── AI ────────────────────────────────────────────────────────
+anthropic==0.86.0
+
+# ── HTTP client (async URL fetching) ─────────────────────────
 httpx==0.28.1
-beautifulsoup4==4.12.3
-python-dotenv==1.0.0
+
+# ── HTML parsing ─────────────────────────────────────────────
+beautifulsoup4==4.14.3
+
+# ── Config ───────────────────────────────────────────────────
+python-dotenv==1.2.2
+
+# ── Data validation (explicit pin — used directly in models) ─
+pydantic==2.12.5

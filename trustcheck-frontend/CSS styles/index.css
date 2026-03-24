@@ -121,6 +121,11 @@ header
     font-size: 30px;
 }
 
+.ai 
+{
+    color: #1e90ff;
+}
+
 .top-buttons-container
 {
     width: 500px;
@@ -401,14 +406,7 @@ Block Contains:
 ===========================================================================================================
 */
 
-.footer 
-{
-    margin-top: 50px;
-    padding-top: 20px;
-    text-align: center;
-    font-size: 14px;
-    color: #999;
-}
+
 
 /* 
 ===========================================================================================================
@@ -1281,3 +1279,200 @@ User Dropdown Menu
     background: rgba(255, 80, 80, 0.1);
     color: #ff8080;
 }
+
+/* ===========================================================================================================
+Account Stats Banner
+===========================================================================================================*/
+
+.stats-banner {
+    display: none; /* shown by JS when logged in */
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    background: rgba(10, 15, 35, 0.72);
+    backdrop-filter: blur(18px);
+    border: 1px solid rgba(56, 133, 241, 0.18);
+    border-radius: 16px;
+    padding: 16px 28px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.stats-banner__item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 0 24px;
+}
+
+.stats-banner__val {
+    font-size: 22px;
+    font-weight: 700;
+    color: #e0e4f0;
+    line-height: 1;
+}
+
+.stats-banner__label {
+    font-size: 11px;
+    color: #445;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.stats-banner__item--pass .stats-banner__val { color: #39d98a; }
+.stats-banner__item--fail .stats-banner__val { color: #ff6b6b; }
+
+.stats-banner__divider {
+    width: 1px;
+    height: 36px;
+    background: rgba(255, 255, 255, 0.07);
+    flex-shrink: 0;
+}
+
+/* ===========================================================================================================
+Verification toast
+===========================================================================================================*/
+
+.auth-toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #13141a;
+    border: 1px solid rgba(255, 209, 102, 0.3);
+    border-radius: 12px;
+    padding: 12px 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: #c8d0e8;
+    z-index: 5000;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    animation: toastIn 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+    white-space: nowrap;
+}
+
+@keyframes toastIn {
+    from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ===========================================================================================================
+User menu: unverified badge + settings link
+===========================================================================================================*/
+
+.user-menu__badge {
+    font-size: 10px;
+    color: #ffd166;
+    background: rgba(255,209,102,0.1);
+    border: 1px solid rgba(255,209,102,0.25);
+    border-radius: 6px;
+    padding: 2px 7px;
+    margin-top: 4px;
+    display: inline-block;
+}
+.user-menu__badge.hidden { display: none; }
+
+/* Settings link styled as a menu item */
+a.user-menu__item {
+    text-decoration: none;
+    display: flex;
+}
+/* ===========================================================================================================
+Footer
+===========================================================================================================*/
+
+.footer {
+    margin-top: 60px;
+    border-top: 1px solid rgba(56, 133, 241, 0.1);
+    padding: 32px 50px 24px;
+
+    background: rgba(5, 8, 25, 0.6);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+
+.footer-inner {
+    max-width: 960px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    text-align: center;
+}
+
+.footer-brand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.footer-logo {
+    font-size: 17px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.footer-logo span {
+    color: #3885f1;
+}
+
+.footer-tagline {
+    font-size: 12px;
+    color: #445;
+}
+
+.footer-links {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.footer-links a {
+    font-size: 13px;
+    color: #556;
+    text-decoration: none;
+    transition: color 0.18s;
+}
+
+.footer-links a:hover {
+    color: #3885f1;
+}
+
+.footer-copy {
+    font-size: 12px;
+    color: #334;
+}
+
+
+/* ===========================================================================================================
+Re-run Button
+===========================================================================================================*/
+
+.ai-modal__rerun-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 20px;
+    border-radius: 10px;
+    border: 1px solid rgba(56, 133, 241, 0.3);
+    background: rgba(56, 133, 241, 0.07);
+    color: #3885f1;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'Poppins', sans-serif;
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+.ai-modal__rerun-btn svg { width: 14px; height: 14px; }
+.ai-modal__rerun-btn:hover {
+    background: rgba(56, 133, 241, 0.16);
+    border-color: rgba(56, 133, 241, 0.5);
+    transform: translateY(-1px);
+}
+.ai-modal__rerun-btn:active { transform: translateY(0); }

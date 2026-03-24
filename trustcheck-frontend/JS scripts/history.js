@@ -126,6 +126,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 </div>
                 <div class="hcard__header-right">
                     <span class="hcard__verdict ${verdictClass(entry.verdict)}">${entry.verdict || "—"}</span>
+                    <button class="hcard__rerun-btn" title="Re-run this analysis" data-text="${(entry.description || '').replace(/"/g,'&quot;')}" data-platform="${platform.toLowerCase()}">
+                        <svg viewBox="0 0 14 14" fill="none"><path d="M2 7a5 5 0 105-.86" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M7 3V1l-2 2 2 2V3z" fill="currentColor"/></svg>
+                    </button>
                     ${deleteBtn}
                 </div>
             </div>
@@ -165,6 +168,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 </div>
             </details>
         `;
+
+        // Wire re-run button — navigate to home with pre-filled data
+        const rerun = card.querySelector(".hcard__rerun-btn");
+        if (rerun) {
+            rerun.addEventListener("click", () => {
+                const text     = rerun.dataset.text     || "";
+                const platform = rerun.dataset.platform || "";
+                // Store in sessionStorage so index.js can pick it up
+                sessionStorage.setItem("tc_rerun", JSON.stringify({ text, platform }));
+                window.location.href = "index.html";
+            });
+        }
 
         // Wire per-card delete button
         const del = card.querySelector(".hcard__delete-btn");

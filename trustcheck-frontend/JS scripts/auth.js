@@ -1,11 +1,8 @@
-/* 
-=============================================================
-   TrustCheck.AI — Auth (v2)
-   All auth calls go to the real backend API.
-   Token stored in localStorage under "tc_token".
-   Session info (name, email) stored under "tc_session".
-   ============================================================= 
-*/
+/* =============================================================
+   TrustCheck.AI — Auth (v3)
+   Real backend API. Token in localStorage "tc_token".
+   Session in "tc_session".
+   ============================================================= */
 
 (function () {
 
@@ -21,10 +18,24 @@
   function saveSession(u) { localStorage.setItem(SESSION_KEY, JSON.stringify(u)); }
   function clearSession() { localStorage.removeItem(SESSION_KEY); }
 
-  /* Expose token getter so index.js can attach it to /analyze requests */
+  /* Expose for other scripts */
   window.TC_AUTH = { getToken };
 
-  /* ── Inject modal HTML ─────────────────────────────────────── */
+  /* ── Build absolute path to any page in HTML pages/ ─────────── */
+  function pagesUrl(filename) {
+    const loc = window.location.href;
+    // Find the root of the project (everything up to and including the folder
+    // that contains "HTML pages" or "trustcheck-frontend")
+    const match = loc.match(/^(.*trustcheck-frontend[\/])/i);
+    if (match) return match[1] + "HTML%20pages/" + filename;
+    // Fallback: if we're already inside HTML pages, use relative path
+    if (loc.includes("HTML%20pages") || loc.includes("HTML pages")) {
+      return filename;
+    }
+    return "HTML%20pages/" + filename;
+  }
+
+  /* ── Inject auth modal ─────────────────────────────────────── */
   document.body.insertAdjacentHTML("beforeend", `
   <div id="authOverlay" class="auth-overlay hidden" role="dialog" aria-modal="true">
     <div class="auth-modal">
@@ -40,6 +51,7 @@
         <button class="auth-tab" data-auth-tab="signup">Sign Up</button>
       </div>
       <div class="auth-form auth-form--active" id="authFormLogin">
+        <form onsubmit="return false;" autocomplete="on">
         <div class="auth-field">
           <label for="loginEmail">Email</label>
           <input type="email" id="loginEmail" placeholder="you@example.com" autocomplete="email"/>
@@ -49,9 +61,11 @@
           <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password"/>
         </div>
         <p class="auth-error hidden" id="loginError"></p>
-        <button class="auth-submit" id="loginSubmit">Log In</button>
+        <button type="button" class="auth-submit" id="loginSubmit">Log In</button>
+        </form>
       </div>
       <div class="auth-form" id="authFormSignup">
+        <form onsubmit="return false;" autocomplete="on">
         <div class="auth-field">
           <label for="signupName">Name</label>
           <input type="text" id="signupName" placeholder="Your name" autocomplete="name"/>
@@ -65,18 +79,25 @@
           <input type="password" id="signupPassword" placeholder="Min. 6 characters" autocomplete="new-password"/>
         </div>
         <p class="auth-error hidden" id="signupError"></p>
-        <button class="auth-submit" id="signupSubmit">Create Account</button>
+        <button type="button" class="auth-submit" id="signupSubmit">Create Account</button>
+        </form>
       </div>
     </div>
   </div>`);
 
-  /* ── Inject user dropdown menu ─────────────────────────────── */
+  /* ── Inject user dropdown ──────────────────────────────────── */
   document.body.insertAdjacentHTML("beforeend", `
   <div id="userMenu" class="user-menu hidden" role="menu">
     <div class="user-menu__info">
       <span class="user-menu__name"  id="userMenuName"></span>
       <span class="user-menu__email" id="userMenuEmail"></span>
+      <span class="user-menu__badge hidden" id="userMenuBadge"></span>
     </div>
+    <div class="user-menu__divider"></div>
+    <a class="user-menu__item" id="userMenuSettings" role="menuitem">
+      <svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M2.93 2.93l1.06 1.06M12.01 12.01l1.06 1.06M2.93 13.07l1.06-1.06M12.01 3.99l1.06-1.06" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+      Settings
+    </a>
     <div class="user-menu__divider"></div>
     <button class="user-menu__item user-menu__item--danger" id="userMenuLogout" role="menuitem">
       <svg viewBox="0 0 16 16" fill="none"><path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3M10 11l3-3-3-3M13 8H6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -86,7 +107,7 @@
 
   /* ── Header button ─────────────────────────────────────────── */
   function updateHeaderButton() {
-    const btn     = document.querySelector(".register-button");
+    const btn     = document.querySelector("header .register-button");
     if (!btn) return;
     const session = getSession();
     if (session) {
@@ -118,7 +139,11 @@
     const overlay = document.getElementById("authOverlay");
     overlay.classList.remove("active");
     overlay.classList.add("hidden");
-    document.body.style.overflow = "";
+    // Only restore scroll if the result popup is not open
+    const resultPopup = document.getElementById("aiResultPopup");
+    if (!resultPopup || resultPopup.style.display !== "flex") {
+      document.body.style.overflow = "";
+    }
   }
 
   function switchTab(name) {
@@ -129,7 +154,7 @@
         f.id === "authForm" + name.charAt(0).toUpperCase() + name.slice(1)));
   }
 
-  /* ── Validation helpers ────────────────────────────────────── */
+  /* ── Helpers ───────────────────────────────────────────────── */
   function showError(id, msg) {
     const el = document.getElementById(id);
     if (!el) return;
@@ -171,6 +196,8 @@
       saveSession(data.user);
       closeModal();
       updateHeaderButton();
+      // Show verification reminder as a gentle toast
+      showVerificationReminder();
     } catch {
       showError("signupError", "Could not reach the server. Is the backend running?");
     } finally {
@@ -206,25 +233,56 @@
     }
   }
 
+  /* ── Verification reminder toast ──────────────────────────── */
+  function showVerificationReminder() {
+    // Only show once per session
+    if (sessionStorage.getItem("tc_verify_reminder")) return;
+    sessionStorage.setItem("tc_verify_reminder", "1");
+
+    const toast = document.createElement("div");
+    toast.className = "auth-toast";
+    toast.innerHTML = `
+      <svg viewBox="0 0 16 16" fill="none" style="width:16px;height:16px;flex-shrink:0">
+        <circle cx="8" cy="8" r="7" stroke="#ffd166" stroke-width="1.3"/>
+        <path d="M8 5v4" stroke="#ffd166" stroke-width="1.3" stroke-linecap="round"/>
+        <circle cx="8" cy="11" r="0.6" fill="#ffd166"/>
+      </svg>
+      <span>Check your inbox to verify your email address.</span>
+      <button onclick="this.parentElement.remove()" style="background:none;border:none;color:#667;cursor:pointer;font-size:16px;line-height:1;padding:0 0 0 8px">×</button>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 7000);
+  }
+
   /* ── User dropdown ─────────────────────────────────────────── */
   function openUserMenu(btn) {
     const menu    = document.getElementById("userMenu");
     const session = getSession();
     if (!menu) return;
 
-    // Populate
     document.getElementById("userMenuName").textContent  = session ? session.name  : "";
     document.getElementById("userMenuEmail").textContent = session ? session.email : "";
 
-    // Position below the button, right-aligned
+    // Verification badge
+    const badge = document.getElementById("userMenuBadge");
+    if (session && !session.verified) {
+      badge.textContent = "Email not verified";
+      badge.classList.remove("hidden");
+    } else {
+      badge.classList.add("hidden");
+    }
+
+    // Settings link — path depends on current page
+    const settingsLink = document.getElementById("userMenuSettings");
+    settingsLink.href = pagesUrl("settings.html");
+
     const rect = btn.getBoundingClientRect();
     menu.style.top  = (rect.bottom + window.scrollY + 8) + "px";
-    menu.style.left = (rect.right  + window.scrollX)     + "px"; // will clamp below
+    menu.style.left = (rect.right  + window.scrollX) + "px";
 
     menu.classList.remove("hidden");
     menu.classList.add("active");
 
-    // Clamp after paint so we know the menu width
     requestAnimationFrame(() => {
       const mw = menu.offsetWidth;
       let left = rect.right + window.scrollX - mw;
@@ -260,61 +318,54 @@
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) { clearToken(); clearSession(); }
-      else         { saveSession(await res.json()); }
+      else {
+        const user = await res.json();
+        saveSession(user);
+      }
     } catch { /* server unreachable — keep cached session */ }
     updateHeaderButton();
   }
 
-  /* ── Single document-level click handler ───────────────────── *
-   *  Handles ALL clicks in one place to avoid stacking listeners  */
+  /* ── Single document click handler ────────────────────────── */
   document.addEventListener("click", e => {
-    const headerBtn = document.querySelector(".register-button");
-    const menu      = document.getElementById("userMenu");
-    const overlay   = document.getElementById("authOverlay");
+    const menu    = document.getElementById("userMenu");
+    const overlay = document.getElementById("authOverlay");
 
-    /* Close modal on backdrop click */
     if (e.target === overlay) { closeModal(); return; }
 
-    /* Header button clicked */
-    if (headerBtn && headerBtn.contains(e.target)) {
+    // Scope to the header button only, not any other .register-button on the page
+    const liveBtn = document.querySelector("header .register-button");
+    if (liveBtn && (liveBtn === e.target || liveBtn.contains(e.target))) {
       if (getSession()) {
-        /* Logged in: toggle dropdown */
-        isMenuOpen() ? closeUserMenu() : openUserMenu(headerBtn);
+        isMenuOpen() ? closeUserMenu() : openUserMenu(liveBtn);
       } else {
-        /* Logged out: open login modal */
         openModal();
       }
       return;
     }
 
-    /* Logout button inside the dropdown */
     if (e.target && e.target.closest("#userMenuLogout")) {
       handleLogout();
       return;
     }
 
-    /* Click outside open menu → close it */
     if (isMenuOpen() && menu && !menu.contains(e.target)) {
       closeUserMenu();
     }
   });
 
-  /* ── Other event wiring ────────────────────────────────────── */
+  /* ── Other wiring ──────────────────────────────────────────── */
   document.getElementById("authClose").addEventListener("click", closeModal);
-
   document.querySelectorAll(".auth-tab").forEach(btn =>
     btn.addEventListener("click", () => switchTab(btn.dataset.authTab)));
-
   document.getElementById("loginSubmit").addEventListener("click", handleLogin);
   document.getElementById("signupSubmit").addEventListener("click", handleSignup);
-
   document.getElementById("loginPassword").addEventListener("keydown", e => {
     if (e.key === "Enter") handleLogin();
   });
   document.getElementById("signupPassword").addEventListener("keydown", e => {
     if (e.key === "Enter") handleSignup();
   });
-
   document.addEventListener("keydown", e => {
     if (e.key === "Escape") { closeModal(); closeUserMenu(); }
   });

@@ -129,7 +129,7 @@
                 </div>
                 <div class="ai-modal__header-right">
                     <span id="verdictBadge" class="verdict-pill">—</span>
-                    <button class="ai-modal__close" data-popup-close aria-label="Close">
+                    <button class="ai-modal__close" onclick="closePopup()" aria-label="Close">
                         <svg viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                         </svg>

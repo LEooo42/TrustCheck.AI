@@ -350,44 +350,9 @@ function adaptV1ResultToUi(apiResult) {
 
 // Guard flag: only explicit user actions (X button, backdrop click) can close the popup
 let _popupIsOpen = false;
-let _popupOpenedAt = 0;
-let _popupWired = false;
-
-function ensurePopupWiring() {
-  if (_popupWired) return;
-
-  const popup = document.getElementById("aiResultPopup");
-  const modal = popup ? popup.querySelector(".ai-modal") : null;
-  if (!popup || !modal) return;
-
-  // Prevent any click inside the modal card from ever reaching the backdrop
-  modal.addEventListener("click", e => e.stopPropagation());
-
-  popup.addEventListener("click", e => {
-    // Only a real click on the dark backdrop may close the popup
-    if (e.target !== popup) return;
-
-    // Guard against accidental click-through / delayed synthetic clicks right after open
-    if (performance.now() - _popupOpenedAt < 350) return;
-
-    closePopup();
-  });
-
-  popup.querySelectorAll("[data-popup-close]").forEach(btn => {
-    btn.addEventListener("click", e => {
-      e.preventDefault();
-      e.stopPropagation();
-      closePopup(true);
-    });
-  });
-
-  _popupWired = true;
-}
 
 function showPopup(result, apiResult = {}) {
   if (!result || Object.keys(result).length === 0) return;
-
-  ensurePopupWiring();
 
   const popup = document.getElementById("aiResultPopup");
   // Use direct style override — immune to any class/CSS conflicts
@@ -395,8 +360,9 @@ function showPopup(result, apiResult = {}) {
   popup.classList.remove("hidden");
   popup.classList.add("active");
   _popupIsOpen = true;
-  _popupOpenedAt = performance.now();
   document.body.style.overflow = "hidden";
+  // Only close when clicking the dark backdrop, not the modal card itself
+  popup.onclick = (e) => { if (e.target === popup) closePopup(); };
 
   const score = Number(result.score ?? 0);
   const platform = platformSelect.value || "—";
@@ -557,22 +523,17 @@ function showPopup(result, apiResult = {}) {
   }
 }
 
-function closePopup(force = false) {
+function closePopup() {
   // Guard: only close if popup is actually open
   if (!_popupIsOpen) return;
-
-  // Ignore accidental close attempts immediately after opening unless forced
-  if (!force && performance.now() - _popupOpenedAt < 350) return;
-
   const popup = document.getElementById("aiResultPopup");
   popup.style.display = "none";
   popup.classList.add("hidden");
   popup.classList.remove("active");
+  popup.onclick = null;
   _popupIsOpen = false;
   document.body.style.overflow = "";
 }
-
-window.closePopup = closePopup;
 
 function renderRing(score) {
   const fill = document.getElementById("scoreRingFill");
