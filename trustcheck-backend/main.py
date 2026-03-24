@@ -979,3 +979,7 @@ async def analyze(
 @app.get("/health")
 def health():
     return {"status": "ok", "version": "3.0.0", "platforms": list(POLICIES)}
+
+@app.get("/")
+def root():
+    return {"status": "TrustCheck AI backend running"}
