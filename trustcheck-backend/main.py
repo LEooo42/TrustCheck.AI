@@ -17,7 +17,8 @@ from email.mime.multipart import MIMEMultipart
 from collections import defaultdict
 from contextlib import contextmanager
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, List
+
 
 import anthropic, httpx
 from bs4 import BeautifulSoup
@@ -26,6 +27,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
+
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging.basicConfig(level=logging.INFO)
@@ -855,10 +857,10 @@ async def rate_status(request: Request):
 async def analyze(
     request: Request,
     platform: str = Form(...),
-    ad_text:  str = Form(...),
+    ad_text: str = Form(...),
     language: str = Form("auto"),
-    images:   list[UploadFile] = File(default=[]),
-    ad_url:   str = Form(default=""),
+    images: Optional[List[UploadFile]] = File(default=None),
+    ad_url: str = Form(default=""),
     user: Optional[dict] = Depends(get_user),
 ):
     ip = get_ip(request)
