@@ -25,7 +25,23 @@
 
 
         <button class="register-button">Get Started</button>
+    
+        <button class="nav-hamburger" id="navHamburger" aria-label="Toggle menu">
+            <span></span><span></span><span></span>
+        </button>
     </header>
+    <nav class="mobile-nav-drawer" id="mobileNavDrawer">
+        <a href="index.html">Home</a>
+        <a href="history.html">Ad History</a>
+        <a href="about.html">About</a>
+        <a href="contact.html">Contact</a>
+        <a href="settings.html">Settings</a>
+        <div class="mobile-nav-divider"></div>
+        <div class="mobile-nav-auth" id="mobileNavAuth">
+            <!-- Populated by auth.js -->
+            <button class="mobile-login-btn" id="mobileLoginBtn">Get Started</button>
+        </div>
+    </nav>
 
     <main>
         <div class="contact-wrapper">
@@ -108,6 +124,25 @@
             color: 0x105c83,
             backgroundColor: 0x30321
         });
+    </script>
+
+    <script>
+    (function() {
+        var btn = document.getElementById('navHamburger');
+        var drawer = document.getElementById('mobileNavDrawer');
+        if (!btn || !drawer) return;
+        btn.addEventListener('click', function() {
+            var open = drawer.classList.toggle('open');
+            btn.classList.toggle('open', open);
+            btn.setAttribute('aria-expanded', open);
+        });
+        document.addEventListener('click', function(e) {
+            if (!btn.contains(e.target) && !drawer.contains(e.target)) {
+                drawer.classList.remove('open');
+                btn.classList.remove('open');
+            }
+        });
+    })();
     </script>
 </body>
 </html>

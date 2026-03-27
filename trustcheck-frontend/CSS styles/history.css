@@ -1142,3 +1142,185 @@ Footer
     color: #334;
 }
 
+
+/* ===========================================================================================================
+MOBILE RESPONSIVE — History page
+===========================================================================================================*/
+
+.nav-hamburger {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    z-index: 200;
+}
+.nav-hamburger span {
+    display: block;
+    width: 22px;
+    height: 2px;
+    background: #fff;
+    border-radius: 2px;
+    transition: all 0.25s ease;
+}
+.nav-hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.nav-hamburger.open span:nth-child(2) { opacity: 0; }
+.nav-hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+.mobile-nav-drawer {
+    display: none;
+    position: fixed;
+    top: 60px;
+    left: 0; right: 0;
+    background: rgba(5, 8, 25, 0.97);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(56,133,241,0.15);
+    z-index: 99;
+    flex-direction: column;
+    padding: 12px 0 20px;
+    animation: drawerIn 0.2s ease;
+}
+.mobile-nav-drawer.open { display: flex; }
+@keyframes drawerIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.mobile-nav-drawer a,
+.mobile-nav-drawer button {
+    display: block; width: 100%; text-align: left;
+    padding: 14px 24px; background: none; border: none;
+    color: #c8d0e8; font-size: 15px; font-family: 'Poppins', sans-serif;
+    font-weight: 500; text-decoration: none; cursor: pointer;
+    transition: color 0.15s, background 0.15s;
+}
+.mobile-nav-drawer a:hover,
+.mobile-nav-drawer button:hover { color: #3885f1; background: rgba(56,133,241,0.06); }
+.mobile-nav-drawer .active-link { color: #3885f1; font-weight: 600; }
+
+@media (max-width: 768px) {
+    header { padding: 0 16px; height: 60px; }
+    .wesbite-header-name { font-size: 20px; }
+    .top-buttons-container { display: none; }
+    .register-button { display: none; }
+    .nav-hamburger { display: flex; }
+
+    /* Toolbar */
+    .history-toolbar {
+        margin: 0 12px 16px;
+        padding: 10px 12px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    .history-toolbar__left { flex-wrap: wrap; gap: 8px; }
+    .sort-group { flex-wrap: wrap; }
+    .sort-btn { font-size: 11px; padding: 5px 10px; }
+    .platform-filter { font-size: 11px; }
+    .clear-btn { font-size: 11px; padding: 6px 12px; }
+
+    /* History wrapper */
+    .history-wrapper {
+        margin: 16px 12px;
+        padding: 20px 16px;
+        border-radius: 16px;
+    }
+    .history-wrapper h2 { font-size: 20px; }
+
+    /* Cards */
+    .history-card { padding: 14px 12px; }
+    .hcard__header { flex-wrap: wrap; gap: 8px; }
+    .hcard__detail-grid { grid-template-columns: 1fr; }
+
+    /* Delete/rerun always visible on touch */
+    .hcard__delete-btn,
+    .hcard__rerun-btn { opacity: 1; }
+
+    /* Stats banner */
+    .stats-banner { padding: 12px 14px; margin: 0 12px 16px; }
+    .stats-banner__item { padding: 0 12px; }
+    .stats-banner__val { font-size: 18px; }
+
+    /* Confirm popup */
+    .confirm-content { padding: 24px 18px; }
+
+    .footer { padding: 24px 16px 20px; }
+    .user-menu { right: 12px; }
+}
+
+@media (max-width: 400px) {
+    .hcard__meta { flex-wrap: wrap; gap: 6px; }
+    .stats-banner { flex-direction: column; gap: 12px; }
+    .stats-banner__divider { width: 60%; height: 1px; }
+}
+
+/* Ensure content layers above vanta canvas */
+main { position: relative; z-index: 1; }
+header { z-index: 100; }
+.footer { position: relative; z-index: 1; }
+
+/* ===========================================================================================================
+History toolbar — mobile layout fix
+===========================================================================================================*/
+
+@media (max-width: 768px) {
+    #historyToolbar { padding: 0 12px; }
+
+    .history-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+        padding: 12px;
+    }
+
+    .history-toolbar__left {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        width: 100%;
+    }
+
+    /* Sort buttons: full-width row, equal width pills */
+    .sort-group {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+        width: 100%;
+    }
+    .sort-btn {
+        text-align: center;
+        font-size: 11px;
+        padding: 7px 4px;
+    }
+
+    /* Platform filter: full width */
+    .filter-group { width: 100%; }
+    .platform-filter {
+        width: 100%;
+        padding: 8px 10px;
+        font-size: 13px;
+    }
+
+    /* Clear all: full width, at the bottom */
+    .clear-btn {
+        width: 100%;
+        justify-content: center;
+        padding: 10px;
+        font-size: 13px;
+    }
+}
+
+/* Mobile nav — login button */
+.mobile-nav-divider { height: 1px; background: rgba(56,133,241,0.15); margin: 8px 16px; }
+.mobile-nav-auth { padding: 8px 16px 4px; }
+.mobile-login-btn {
+    width: 100%; padding: 12px 20px; border-radius: 10px;
+    border: 1px solid rgba(56,133,241,0.4); background: rgba(56,133,241,0.15);
+    color: #3885f1; font-size: 14px; font-weight: 600;
+    font-family: 'Poppins', sans-serif; cursor: pointer;
+    text-align: center; transition: background 0.18s, border-color 0.18s;
+}
+.mobile-login-btn:hover { background: rgba(56,133,241,0.25); border-color: rgba(56,133,241,0.6); }
+.mobile-login-btn--logged-in { background: rgba(56,133,241,0.08); border-color: rgba(56,133,241,0.25); color: #c8d0e8; }

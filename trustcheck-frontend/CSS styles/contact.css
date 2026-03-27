@@ -851,3 +851,90 @@ a.user-menu__item { text-decoration: none; display: flex; }
     from { opacity: 0; transform: translateX(-50%) translateY(12px); }
     to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
+
+/* ===========================================================================================================
+MOBILE RESPONSIVE — Contact page
+===========================================================================================================*/
+
+.nav-hamburger {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    z-index: 200;
+}
+.nav-hamburger span {
+    display: block; width: 22px; height: 2px;
+    background: #fff; border-radius: 2px; transition: all 0.25s ease;
+}
+.nav-hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.nav-hamburger.open span:nth-child(2) { opacity: 0; }
+.nav-hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+.mobile-nav-drawer {
+    display: none; position: fixed; top: 60px; left: 0; right: 0;
+    background: rgba(5, 8, 25, 0.97); backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(56,133,241,0.15);
+    z-index: 99; flex-direction: column; padding: 12px 0 20px;
+    animation: drawerIn 0.2s ease;
+}
+.mobile-nav-drawer.open { display: flex; }
+@keyframes drawerIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.mobile-nav-drawer a,
+.mobile-nav-drawer button {
+    display: block; width: 100%; text-align: left; padding: 14px 24px;
+    background: none; border: none; color: #c8d0e8; font-size: 15px;
+    font-family: 'Poppins', sans-serif; font-weight: 500;
+    text-decoration: none; cursor: pointer; transition: color 0.15s, background 0.15s;
+}
+.mobile-nav-drawer a:hover,
+.mobile-nav-drawer button:hover { color: #3885f1; background: rgba(56,133,241,0.06); }
+.mobile-nav-drawer .active-link { color: #3885f1; font-weight: 600; }
+
+@media (max-width: 768px) {
+    header { padding: 0 16px; height: 60px; }
+    .wesbite-header-name { font-size: 20px; }
+    .top-buttons-container { display: none; }
+    .register-button { display: none; }
+    .nav-hamburger { display: flex; }
+
+    .contact-wrapper {
+        margin: 16px 12px;
+        padding: 24px 16px;
+        border-radius: 16px;
+    }
+    .contact-wrapper h2 { font-size: 22px; }
+    .contact-wrapper p { font-size: 14px; }
+
+    /* Inputs — prevent iOS zoom */
+    .contact-form input,
+    .contact-form textarea { font-size: 16px; }
+
+    .footer { padding: 24px 16px 20px; }
+    .user-menu { right: 12px; }
+}
+
+/* Ensure content layers above vanta canvas */
+main { position: relative; z-index: 1; }
+header { z-index: 100; }
+.footer { position: relative; z-index: 1; }
+
+/* Mobile nav — login button */
+.mobile-nav-divider { height: 1px; background: rgba(56,133,241,0.15); margin: 8px 16px; }
+.mobile-nav-auth { padding: 8px 16px 4px; }
+.mobile-login-btn {
+    width: 100%; padding: 12px 20px; border-radius: 10px;
+    border: 1px solid rgba(56,133,241,0.4); background: rgba(56,133,241,0.15);
+    color: #3885f1; font-size: 14px; font-weight: 600;
+    font-family: 'Poppins', sans-serif; cursor: pointer;
+    text-align: center; transition: background 0.18s, border-color 0.18s;
+}
+.mobile-login-btn:hover { background: rgba(56,133,241,0.25); border-color: rgba(56,133,241,0.6); }
+.mobile-login-btn--logged-in { background: rgba(56,133,241,0.08); border-color: rgba(56,133,241,0.25); color: #c8d0e8; }

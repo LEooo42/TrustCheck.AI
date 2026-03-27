@@ -23,16 +23,8 @@
 
   /* ── Build absolute path to any page in HTML pages/ ─────────── */
   function pagesUrl(filename) {
-    const loc = window.location.href;
-    // Find the root of the project (everything up to and including the folder
-    // that contains "HTML pages" or "trustcheck-frontend")
-    const match = loc.match(/^(.*trustcheck-frontend[\/])/i);
-    if (match) return match[1] + "HTML%20pages/" + filename;
-    // Fallback: if we're already inside HTML pages, use relative path
-    if (loc.includes("HTML%20pages") || loc.includes("HTML pages")) {
-      return filename;
-    }
-    return "HTML%20pages/" + filename;
+    // Pages live at the project root alongside auth.js — simple relative path.
+    return filename;
   }
 
   /* ── Inject auth modal ─────────────────────────────────────── */
@@ -107,16 +99,26 @@
 
   /* ── Header button ─────────────────────────────────────────── */
   function updateHeaderButton() {
-    const btn     = document.querySelector("header .register-button");
+    const btn         = document.querySelector("header .register-button");
+    const mobileBtn   = document.getElementById("mobileLoginBtn");
+    const mobileAuth  = document.getElementById("mobileNavAuth");
     if (!btn) return;
     const session = getSession();
     if (session) {
       const initials = session.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
       btn.innerHTML = `<span class="auth-avatar">${initials}</span> ${session.name.split(" ")[0]}`;
       btn.classList.add("register-button--logged-in");
+      if (mobileBtn) {
+        mobileBtn.textContent = session.name.split(" ")[0] || "Account";
+        mobileBtn.classList.add("mobile-login-btn--logged-in");
+      }
     } else {
       btn.innerHTML = "Get Started";
       btn.classList.remove("register-button--logged-in");
+      if (mobileBtn) {
+        mobileBtn.textContent = "Get Started";
+        mobileBtn.classList.remove("mobile-login-btn--logged-in");
+      }
     }
   }
 
@@ -338,6 +340,22 @@
     if (liveBtn && (liveBtn === e.target || liveBtn.contains(e.target))) {
       if (getSession()) {
         isMenuOpen() ? closeUserMenu() : openUserMenu(liveBtn);
+      } else {
+        openModal();
+      }
+      return;
+    }
+
+    // Mobile drawer login/account button
+    const mobileLiveBtn = document.getElementById("mobileLoginBtn");
+    if (mobileLiveBtn && (mobileLiveBtn === e.target || mobileLiveBtn.contains(e.target))) {
+      // Close drawer first
+      const drawer = document.getElementById("mobileNavDrawer");
+      const ham    = document.getElementById("navHamburger");
+      if (drawer) { drawer.classList.remove("open"); }
+      if (ham)    { ham.classList.remove("open"); }
+      if (getSession()) {
+        isMenuOpen() ? closeUserMenu() : openUserMenu(mobileLiveBtn);
       } else {
         openModal();
       }
