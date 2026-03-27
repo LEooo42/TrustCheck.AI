@@ -897,10 +897,16 @@ async def analyze(
         if img_bytes and img_mt:
             content.append(encode_image(img_bytes, img_mt))
     else:
-        for up in images:
+        for up in (images or []):
+            # Render/Swagger sends a dummy UploadFile with an empty filename
+            # and no content when the field is left blank — skip those.
+            if not up.filename and not up.size:
+                continue
+            b = await up.read()
+            if not b:
+                continue
             if up.content_type not in ALLOWED:
                 raise HTTPException(400, f"Unsupported image type '{up.content_type}'.")
-            b = await up.read()
             if len(b) > MAX_IMG:
                 raise HTTPException(400, f"Image '{up.filename}' exceeds 5 MB.")
             content.append(encode_image(b, up.content_type))
