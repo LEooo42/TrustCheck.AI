@@ -4,7 +4,7 @@ document.getElementById("year").textContent = new Date().getFullYear();
 
 
 
-const API_BASE = "http://127.0.0.1:8000";
+const API_BASE = "https://trustcheck-ai.onrender.com";
 const ANALYZE_ENDPOINT = `${API_BASE}/v1/analyze`;
 const RATE_STATUS_ENDPOINT = `${API_BASE}/v1/rate-status`;
 const STATS_ENDPOINT      = `${API_BASE}/v1/stats`;

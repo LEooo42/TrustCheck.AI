@@ -2,7 +2,7 @@
    TrustCheck.AI — Settings Page
    ============================================================= */
 
-const API_BASE = "http://127.0.0.1:8000";
+const API_BASE = "https://trustcheck-ai.onrender.com";
 
 document.getElementById("year").textContent = new Date().getFullYear();
 

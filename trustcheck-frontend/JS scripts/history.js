@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
 
-    const API_BASE = "http://127.0.0.1:8000";
+    const API_BASE = "https://trustcheck-ai.onrender.com";
 
     /* ── Footer year ───────────────────────────────────────────── */
     const yearSpan = document.getElementById("year");
