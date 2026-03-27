@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verify Email — TrustCheck.AI</title>
-    <link rel="icon" href="../Images/tab_icon.png" type="image/png">
+    <title>Verify Email</title>
+    <link rel="icon" href="Images/tab_icon.png" type="image/png">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -51,7 +51,7 @@
     </div>
 
     <script>
-        const API_BASE = "http://127.0.0.1:8000";
+        const API_BASE = "trustcheck-frontend/JS scripts/index.js";
         const params   = new URLSearchParams(window.location.search);
         const token    = params.get("token");
 
@@ -70,13 +70,11 @@
 
             try {
                 const res = await fetch(`${API_BASE}/auth/verify-email?token=${encodeURIComponent(token)}`);
-                // Backend returns HTML — we just check the HTTP status
                 if (res.ok) {
                     icon.className   = "icon icon--success";
                     icon.textContent = "✓";
                     msg.textContent  = "Your email has been verified! You can now close this tab or return to TrustCheck.AI.";
 
-                    // Update the stored session so the UI reflects verified state
                     const session = JSON.parse(localStorage.getItem("tc_session") || "null");
                     if (session) {
                         session.verified = true;
