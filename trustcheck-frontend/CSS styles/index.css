@@ -1557,7 +1557,7 @@ MOBILE RESPONSIVE — All breakpoints for index/main page
     .wesbite-header-name,
     .website-header-name { font-size: 20px; }
     .top-buttons-container { display: none; }
-    .register-button { display: none; }
+    header .register-button:not(.analyze-button) { display: none; }
     .nav-hamburger { display: flex; }
 
     /* Main form */
@@ -1698,4 +1698,10 @@ Mobile nav drawer — login button & divider
     background: rgba(56, 133, 241, 0.08);
     border-color: rgba(56, 133, 241, 0.25);
     color: #c8d0e8;
+}
+
+/* Settings link — locked state when not logged in */
+a[data-locked] {
+    cursor: not-allowed !important;
+    pointer-events: none;
 }

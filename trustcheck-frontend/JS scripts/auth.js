@@ -120,6 +120,22 @@
         mobileBtn.classList.remove("mobile-login-btn--logged-in");
       }
     }
+
+    // Gate Settings links — disabled/greyed when not logged in
+    const loggedIn = !!getSession();
+    document.querySelectorAll("a[href*='settings.html'], .mobile-nav-drawer a[href='settings.html']").forEach(link => {
+      if (loggedIn) {
+        link.removeAttribute("data-locked");
+        link.style.opacity = "";
+        link.style.pointerEvents = "";
+        link.title = "";
+      } else {
+        link.setAttribute("data-locked", "1");
+        link.style.opacity = "0.35";
+        link.style.pointerEvents = "none";
+        link.title = "Log in to access Settings";
+      }
+    });
   }
 
   /* ── Modal ─────────────────────────────────────────────────── */

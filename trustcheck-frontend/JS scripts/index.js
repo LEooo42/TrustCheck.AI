@@ -11,9 +11,8 @@ const STATS_ENDPOINT      = `${API_BASE}/v1/stats`;
 const BOOKMARKS_ENDPOINT  = `${API_BASE}/v1/bookmarks`;
 
 const MAX_HISTORY = 50;
-const REQUIRE_IMAGE = false; // image not required in URL mode 
+const REQUIRE_IMAGE = false; 
 
-/* ---------- element refs ---------- */
 
 const dropArea = document.getElementById("drop-area");
 const fileInput = document.getElementById("fileInput");
@@ -26,14 +25,12 @@ const platformSelect = document.getElementById("platformSelect");
 const analyzeBtn = document.getElementById("analyzeButton");
 const loadingDots = document.getElementById("loadingDots");
 
-// Optional (only if exists in your HTML)
+// Optional
 const imagePreview = document.getElementById("imagePreview");
 
 // Input mode
 const urlInput = document.getElementById("urlInput");
 let inputMode = "upload"; // "upload" | "url"
-
-/* ---------- utils ---------- */
 
 /*
 Function to safely set files into a file input using DataTransfer

@@ -902,7 +902,7 @@ MOBILE RESPONSIVE — Contact page
     header { padding: 0 16px; height: 60px; }
     .wesbite-header-name { font-size: 20px; }
     .top-buttons-container { display: none; }
-    .register-button { display: none; }
+    header .register-button:not(.analyze-button) { display: none; }
     .nav-hamburger { display: flex; }
 
     .contact-wrapper {
@@ -938,3 +938,6 @@ header { z-index: 100; }
 }
 .mobile-login-btn:hover { background: rgba(56,133,241,0.25); border-color: rgba(56,133,241,0.6); }
 .mobile-login-btn--logged-in { background: rgba(56,133,241,0.08); border-color: rgba(56,133,241,0.25); color: #c8d0e8; }
+
+/* Settings link — locked state */
+a[data-locked] { cursor: not-allowed !important; pointer-events: none; }
