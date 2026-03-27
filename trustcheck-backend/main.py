@@ -17,7 +17,7 @@ from email.mime.multipart import MIMEMultipart
 from collections import defaultdict
 from contextlib import contextmanager
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import Optional, List, Any
 
 
 import anthropic, httpx
@@ -859,7 +859,7 @@ async def analyze(
     platform: str = Form(...),
     ad_text: str = Form(...),
     language: str = Form("auto"),
-    images: Optional[List[UploadFile]] = File(default=None),
+    images: Optional[List[Any]] = File(default=None),
     ad_url: str = Form(default=""),
     user: Optional[dict] = Depends(get_user),
 ):
@@ -898,8 +898,10 @@ async def analyze(
             content.append(encode_image(img_bytes, img_mt))
     else:
         for up in (images or []):
-            # Render/Swagger sends a dummy UploadFile with an empty filename
-            # and no content when the field is left blank — skip those.
+            # Render/Swagger sends a bare empty string "" when the field is left
+            # blank; FastAPI now lets it through (Any type) so we filter it here.
+            if not isinstance(up, UploadFile):
+                continue
             if not up.filename and not up.size:
                 continue
             b = await up.read()
