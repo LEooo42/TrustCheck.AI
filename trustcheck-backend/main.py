@@ -754,67 +754,33 @@ async def remove_bookmark(analysis_id: str, user=Depends(require_auth)):
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def build_prompt(platform: str, ad_text: str, language: str, has_images: bool = False) -> str:
+def build_prompt(platform: str, ad_text: str, language: str) -> str:
     policy = POLICIES.get(platform, POLICIES["google"])
+    return f"""You are TrustCheck.AI, an expert advertising compliance auditor.
 
-    if has_images:
-        analysis_scope = (
-            "Analyse BOTH the ad text and the attached image(s).\n"
-            "For each violation set source to:\n"
-            "  text  — issue is only in the copy\n"
-            "  image — issue is only in the image\n"
-            "  both  — issue exists in both\n"
-            "The suggestions.image list MUST contain at least one actionable item "
-            "describing what you actually see in the image."
-        )
-    else:
-        analysis_scope = (
-            "There is NO image attached. Analyse the ad text only.\n"
-            "Every violation.source MUST be \"text\" — never \"image\" or \"both\".\n"
-            "suggestions.image MUST be an empty array []."
-        )
+## Platform: {platform.upper()}
+## Language: {language}
 
-    return f"""You are TrustCheck.AI, a senior advertising compliance auditor.
-
-Platform: {platform.upper()}
-Language: {language}
-
-POLICIES:
+## Policies
 {policy}
 
-AD TEXT:
-{ad_text}
+## Ad Text
+\"\"\"{ad_text}\"\"\"
 
-SCOPE:
-{analysis_scope}
+## Instructions
+Analyze the ad text and any images for policy compliance.
+Assign a score 0-100, a grade (pass>=80, review 60-79, fail<60).
+Tag each violation with source: text | image | both.
 
-Return ONLY a single valid JSON object — no markdown, no prose, no fences.
-Schema (replace angle-bracket placeholders with real values):
-
+## Output — valid JSON only, no fences
 {{
-  "score": <integer 0-100>,
-  "grade": <"pass" if score>=80, "review" if 60-79, "fail" if <60>,
-  "summary": "<2-3 sentence plain-English overview>",
-  "violations": [
-    {{
-      "code": "<UPPER_SNAKE_CASE identifier>",
-      "severity": "<high|medium|low>",
-      "source": "<text|image|both>",
-      "rationale": "<one sentence explaining the violation>",
-      "suggested_fix": "<one concrete fix>"
-    }}
-  ],
-  "suggestions": {{
-    "text": ["<actionable copy improvement>"],
-    "image": ["<actionable image improvement, or empty array [] if no image>"]
-  }}
-}}
+  "score": <int>,
+  "grade": "<pass|review|fail>",
+  "summary": "<2-3 sentences>",
+  "violations": [{{"code":"...","severity":"<high|medium|low>","source":"<text|image|both>","rationale":"...","suggested_fix":"..."}}],
+  "suggestions": {{"text": ["..."], "image": ["..."]}}
+}}"""
 
-Rules:
-- violations array: 1-6 most impactful items only
-- suggestions.text: 1-5 items
-- suggestions.image: 1-5 items if image supplied, else []
-- Do NOT include any key not shown in the schema above"""
 
 def encode_image(data: bytes, mt: str) -> dict:
     return {"type": "image", "source": {
@@ -948,38 +914,37 @@ async def analyze(
                 raise HTTPException(400, f"Image '{up.filename}' exceeds 5 MB.")
             content.append(encode_image(b, up.content_type))
 
-    has_images = len(content) > 0  # True if any image blocks were added above
-    content.append({"type": "text", "text": build_prompt(platform, ad_text, language, has_images)})
+    image_blocks = sum(1 for item in content if item.get("type") == "image")
+    log.info(
+        "DEBUG analyze | ad_url=%s | images_type=%s | image_blocks=%d",
+        bool(ad_url.strip()),
+        type(images).__name__,
+        image_blocks,
+    )
+
+    for i, up in enumerate(images or []):
+        log.info(
+            "DEBUG upload %d | class=%s | filename=%s | content_type=%s",
+            i,
+            up.__class__.__name__,
+            getattr(up, "filename", None),
+            getattr(up, "content_type", None),
+        )
+
+    content.append({"type": "text", "text": build_prompt(platform, ad_text, language)})
     log.info("Analyze | ip=%s platform=%s user=%s", ip, platform,
              user["email"] if user else "guest")
 
     try:
         resp = claude.messages.create(
             model="claude-opus-4-5",
-            max_tokens=2048,
-            system=(
-                "You are a JSON-only API. "
-                "You must respond with a single valid JSON object and nothing else. "
-                "No markdown, no code fences, no explanation, no prose. "
-                "Your entire response must be parseable by json.loads()."
-            ),
+            max_tokens=1500,
             messages=[{"role": "user", "content": content}],
         )
     except anthropic.APIError as e:
         raise HTTPException(502, f"AI service error: {e}")
 
-    data = parse_json(resp.content[0].text)
-    log.info("Claude raw | score=%s grade=%s violations=%d",
-             data.get("score"), data.get("grade"), len(data.get("violations", [])))
-
-    # Hard enforcement: if no image was uploaded, Claude must not produce image data.
-    # Overwrite whatever Claude returned to guarantee correct source tagging.
-    if not has_images:
-        for v in data.get("violations", []):
-            v["source"] = "text"
-        if isinstance(data.get("suggestions"), dict):
-            data["suggestions"]["image"] = []
-
+    data    = parse_json(resp.content[0].text)
     score   = max(0, min(100, int(data.get("score", 50))))
     grade   = data.get("grade", "review")
     if grade not in ("pass","review","fail"):
