@@ -754,8 +754,26 @@ async def remove_bookmark(analysis_id: str, user=Depends(require_auth)):
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def build_prompt(platform: str, ad_text: str, language: str) -> str:
+def build_prompt(platform: str, ad_text: str, language: str, has_images: bool = False) -> str:
     policy = POLICIES.get(platform, POLICIES["google"])
+
+    if has_images:
+        image_instruction = (
+            "One or more ad images are attached to this message. "
+            "You MUST visually inspect every image and populate the image fields. "
+            "Check for: inappropriate or shocking content, misleading visuals, "
+            "before/after imagery, nudity, excessive text overlay, and any other "
+            "image-specific policy violations. Provide concrete, specific feedback "
+            "about what you actually see in the image(s)."
+        )
+        image_suggestion_placeholder = '["<specific image improvement based on what you see>"]'
+    else:
+        image_instruction = (
+            "No image was provided with this submission. "
+            "You MUST return empty arrays for all image fields — do not invent image feedback."
+        )
+        image_suggestion_placeholder = "[]"
+
     return f"""You are TrustCheck.AI, an expert advertising compliance auditor.
 
 ## Platform: {platform.upper()}
@@ -767,18 +785,20 @@ def build_prompt(platform: str, ad_text: str, language: str) -> str:
 ## Ad Text
 \"\"\"{ad_text}\"\"\"
 
-## Instructions
-Analyze the ad text and any images for policy compliance.
-Assign a score 0-100, a grade (pass>=80, review 60-79, fail<60).
-Tag each violation with source: text | image | both.
+## Image Input
+{image_instruction}
 
-## Output — valid JSON only, no fences
+## Instructions
+Analyze the ad for policy compliance. Assign a score 0-100 and grade (pass>=80, review 60-79, fail<60).
+Tag each violation source as: text | image | both.
+
+## Output — valid JSON only, no markdown fences, no extra keys
 {{
   "score": <int>,
   "grade": "<pass|review|fail>",
   "summary": "<2-3 sentences>",
   "violations": [{{"code":"...","severity":"<high|medium|low>","source":"<text|image|both>","rationale":"...","suggested_fix":"..."}}],
-  "suggestions": {{"text": ["..."], "image": ["..."]}}
+  "suggestions": {{"text": ["<text improvement>"], "image": {image_suggestion_placeholder}}}
 }}"""
 
 
@@ -914,7 +934,8 @@ async def analyze(
                 raise HTTPException(400, f"Image '{up.filename}' exceeds 5 MB.")
             content.append(encode_image(b, up.content_type))
 
-    content.append({"type": "text", "text": build_prompt(platform, ad_text, language)})
+    has_images = len(content) > 0  # True if any image blocks were added above
+    content.append({"type": "text", "text": build_prompt(platform, ad_text, language, has_images)})
     log.info("Analyze | ip=%s platform=%s user=%s", ip, platform,
              user["email"] if user else "guest")
 
