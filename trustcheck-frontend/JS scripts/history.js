@@ -127,7 +127,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <div class="hcard__header-right">
                     <span class="hcard__verdict ${verdictClass(entry.verdict)}">${entry.verdict || "—"}</span>
                     <button class="hcard__rerun-btn" title="Re-run this analysis" data-text="${(entry.description || '').replace(/"/g,'&quot;')}" data-platform="${platform.toLowerCase()}">
-                        <svg viewBox="0 0 14 14" fill="none"><path d="M2 7a5 5 0 105-.86" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M7 3V1l-2 2 2 2V3z" fill="currentColor"/></svg>
+                        <svg viewBox="0 0 16 16" fill="none"><path d="M13.5 8a5.5 5.5 0 1 1-1.38-3.62" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><polyline points="12.5,1.5 12.5,5 9,5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </button>
                     ${deleteBtn}
                 </div>
