@@ -1087,7 +1087,7 @@ async def analyze(
             log.info("DEBUG guard | clearing image suggestions because no image violation was returned")
             data["suggestions"]["image"] = []
 
-    score  = max(0, min(100, int(data.get("score", 50))))
+    score  = max(0, min(100, int(data.get("score", 50)))) 
     grade  = data.get("grade", "review")
     if grade not in ("pass","review","fail"):
         grade = "pass" if score >= 80 else ("review" if score >= 60 else "fail")
