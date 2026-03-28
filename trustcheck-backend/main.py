@@ -21,6 +21,7 @@ from typing import Optional, List, Any
 
 
 import anthropic, httpx
+from starlette.datastructures import UploadFile as StarletteUploadFile
 from bs4 import BeautifulSoup
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -754,32 +755,71 @@ async def remove_bookmark(analysis_id: str, user=Depends(require_auth)):
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def build_prompt(platform: str, ad_text: str, language: str) -> str:
+def build_prompt(platform: str, ad_text: str, language: str, has_images: bool = False) -> str:
     policy = POLICIES.get(platform, POLICIES["google"])
-    return f"""You are TrustCheck.AI, an expert advertising compliance auditor.
 
-## Platform: {platform.upper()}
-## Language: {language}
+    if has_images:
+        analysis_scope = (
+            "Analyse BOTH the ad text and the attached image(s).\n"
+            "For each violation set source to:\n"
+            "  text  - issue is only in the copy\n"
+            "  image - issue is only in the image\n"
+            "  both  - issue exists in both\n"
+            "IMPORTANT RULES:\n"
+            "- Any readable text that appears inside the image counts as image evidence.\n"
+            "- If an issue is supported by on-image text or visual framing, use source='both' or source='image', not only 'text'.\n"
+            "- If suggestions.image is non-empty, violations MUST include at least one item with source='image' or source='both'.\n"
+            "- If there is no actual image-specific concern, suggestions.image MUST be [].\n"
+            "- Do not give generic image suggestions unless they are based on something actually visible in the image."
+        )
+    else:
+        analysis_scope = (
+            "There is NO image attached. Analyse the ad text only.\n"
+            "Every violation.source MUST be \"text\" - never \"image\" or \"both\".\n"
+            "suggestions.image MUST be an empty array []."
+        )
 
-## Policies
+    return f"""You are TrustCheck.AI, a senior advertising compliance auditor.
+
+Platform: {platform.upper()}
+Language: {language}
+
+POLICIES:
 {policy}
 
-## Ad Text
-\"\"\"{ad_text}\"\"\"
+AD TEXT:
+{ad_text}
 
-## Instructions
-Analyze the ad text and any images for policy compliance.
-Assign a score 0-100, a grade (pass>=80, review 60-79, fail<60).
-Tag each violation with source: text | image | both.
+SCOPE:
+{analysis_scope}
 
-## Output — valid JSON only, no fences
+Return ONLY a single valid JSON object - no markdown, no prose, no fences.
+Schema (replace angle-bracket placeholders with real values):
+
 {{
-  "score": <int>,
-  "grade": "<pass|review|fail>",
-  "summary": "<2-3 sentences>",
-  "violations": [{{"code":"...","severity":"<high|medium|low>","source":"<text|image|both>","rationale":"...","suggested_fix":"..."}}],
-  "suggestions": {{"text": ["..."], "image": ["..."]}}
-}}"""
+  "score": <integer 0-100>,
+  "grade": <"pass" if score>=80, "review" if 60-79, "fail" if <60>,
+  "summary": "<2-3 sentence plain-English overview>",
+  "violations": [
+    {{
+      "code": "<UPPER_SNAKE_CASE identifier>",
+      "severity": "<high|medium|low>",
+      "source": "<text|image|both>",
+      "rationale": "<one sentence explaining the violation>",
+      "suggested_fix": "<one concrete fix>"
+    }}
+  ],
+  "suggestions": {{
+    "text": ["<actionable copy improvement>"],
+    "image": ["<actionable image improvement, or [] if none>"]
+  }}
+}}
+
+Rules:
+- violations array: 1-6 most impactful items only
+- suggestions.text: 1-5 items
+- suggestions.image: 1-5 items if and only if there is a real image-specific issue, else []
+- Do NOT include any key not shown in the schema above"""
 
 
 def encode_image(data: bytes, mt: str) -> dict:
@@ -899,20 +939,37 @@ async def analyze(
             content.append(encode_image(img_bytes, img_mt))
     else:
         for up in (images or []):
-            # Render/Swagger sends a bare empty string "" when the field is left
-            # blank; FastAPI now lets it through (Any type) so we filter it here.
-            if not isinstance(up, UploadFile):
+            if up == "":
                 continue
-            if not up.filename and not up.size:
+
+            if not isinstance(up, (UploadFile, StarletteUploadFile)):
+                if not hasattr(up, "read") or not hasattr(up, "content_type"):
+                    continue
+
+            filename = getattr(up, "filename", None)
+            content_type = getattr(up, "content_type", None)
+            size = getattr(up, "size", None)
+
+            if not filename and not size:
                 continue
+
             b = await up.read()
+            log.info(
+                "DEBUG read | class=%s | filename=%s | content_type=%s | bytes=%d",
+                up.__class__.__module__ + "." + up.__class__.__name__,
+                filename,
+                content_type,
+                len(b),
+            )
+
             if not b:
                 continue
-            if up.content_type not in ALLOWED:
-                raise HTTPException(400, f"Unsupported image type '{up.content_type}'.")
+            if content_type not in ALLOWED:
+                raise HTTPException(400, f"Unsupported image type '{content_type}'.")
             if len(b) > MAX_IMG:
-                raise HTTPException(400, f"Image '{up.filename}' exceeds 5 MB.")
-            content.append(encode_image(b, up.content_type))
+                raise HTTPException(400, f"Image '{filename}' exceeds 5 MB.")
+
+            content.append(encode_image(b, content_type))
 
     image_blocks = sum(1 for item in content if item.get("type") == "image")
     log.info(
@@ -931,9 +988,10 @@ async def analyze(
             getattr(up, "content_type", None),
         )
 
-    content.append({"type": "text", "text": build_prompt(platform, ad_text, language)})
-    log.info("Analyze | ip=%s platform=%s user=%s", ip, platform,
-             user["email"] if user else "guest")
+    has_images = image_blocks > 0
+    content.append({"type": "text", "text": build_prompt(platform, ad_text, language, has_images)})
+    log.info("Analyze | ip=%s platform=%s user=%s has_images=%s", ip, platform,
+             user["email"] if user else "guest", has_images)
 
     try:
         resp = claude.messages.create(
@@ -944,7 +1002,28 @@ async def analyze(
     except anthropic.APIError as e:
         raise HTTPException(502, f"AI service error: {e}")
 
-    data    = parse_json(resp.content[0].text)
+    data = parse_json(resp.content[0].text)
+
+    # Hard enforcement: if no image was uploaded, Claude must not produce image data.
+    if not has_images:
+        for v in data.get("violations", []):
+            v["source"] = "text"
+        if isinstance(data.get("suggestions"), dict):
+            data["suggestions"]["image"] = []
+
+    # Hard enforcement: if Claude returned image suggestions but no image-linked
+    # violations, clear those suggestions to keep the UI consistent.
+    if has_images and isinstance(data.get("suggestions"), dict):
+        image_suggestions = data["suggestions"].get("image", []) or []
+        has_image_violation = any(
+            str(v.get("source", "")).lower() in ("image", "both")
+            for v in data.get("violations", [])
+            if isinstance(v, dict)
+        )
+        if image_suggestions and not has_image_violation:
+            log.info("DEBUG guard | clearing image suggestions because no image violation was returned")
+            data["suggestions"]["image"] = []
+
     score   = max(0, min(100, int(data.get("score", 50))))
     grade   = data.get("grade", "review")
     if grade not in ("pass","review","fail"):
