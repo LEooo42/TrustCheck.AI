@@ -758,49 +758,72 @@ def build_prompt(platform: str, ad_text: str, language: str, has_images: bool = 
     policy = POLICIES.get(platform, POLICIES["google"])
 
     if has_images:
-        image_instruction = (
-            "One or more ad images are attached to this message. "
-            "You MUST visually inspect every image and populate the image fields. "
-            "Check for: inappropriate or shocking content, misleading visuals, "
-            "before/after imagery, nudity, excessive text overlay, and any other "
-            "image-specific policy violations. Provide concrete, specific feedback "
-            "about what you actually see in the image(s)."
+        image_section = (
+            "## Images\n"
+            "Images are attached. Visually inspect each one for image-specific violations.\n"
+            "Image violations must use \"source\": \"image\" or \"source\": \"both\".\n"
+            "Check for: misleading visuals, before/after imagery, nudity, shocking content, excessive text overlay."
         )
-        image_suggestion_placeholder = '["<specific image improvement based on what you see>"]'
+        source_rule = (
+            "CRITICAL source field rules:\n"
+            "- \"text\"  = violation found only in the ad copy\n"
+            "- \"image\" = violation found only in the image(s)\n"
+            "- \"both\"  = violation present in both text and image\n"
+            "You MUST use \"image\" or \"both\" for any violation detected from the image."
+        )
+        image_sugg = '"image": ["<specific improvement based on what you see in the image>"]'
     else:
-        image_instruction = (
-            "No image was provided with this submission. "
-            "You MUST return empty arrays for all image fields — do not invent image feedback."
+        image_section = (
+            "## Images\n"
+            "NO image was provided. Analysing text ONLY.\n"
+            "CRITICAL: Every violation MUST have \"source\": \"text\".\n"
+            "Using \"image\" or \"both\" is FORBIDDEN. suggestions.image MUST be []."
         )
-        image_suggestion_placeholder = "[]"
+        source_rule = (
+            "CRITICAL: No image provided.\n"
+            "- Every violation \"source\" MUST be \"text\".\n"
+            "- suggestions.image MUST be []."
+        )
+        image_sugg = '"image": []'
 
     return f"""You are TrustCheck.AI, an expert advertising compliance auditor.
 
 ## Platform: {platform.upper()}
 ## Language: {language}
 
-## Policies
+## Platform Policies
 {policy}
 
 ## Ad Text
 \"\"\"{ad_text}\"\"\"
 
-## Image Input
-{image_instruction}
+{image_section}
 
-## Instructions
-Analyze the ad for policy compliance. Assign a score 0-100 and grade (pass>=80, review 60-79, fail<60).
-Tag each violation source as: text | image | both.
+## Source Field Rules
+{source_rule}
 
-## Output — valid JSON only, no markdown fences, no extra keys
+## Output
+Respond with valid JSON only. No markdown fences, no extra keys, no trailing commas.
+Keep violations to the most impactful (max 6). Keep each suggestion list to max 5 items.
+
 {{
-  "score": <int>,
+  "score": <0-100 int>,
   "grade": "<pass|review|fail>",
-  "summary": "<2-3 sentences>",
-  "violations": [{{"code":"...","severity":"<high|medium|low>","source":"<text|image|both>","rationale":"...","suggested_fix":"..."}}],
-  "suggestions": {{"text": ["<text improvement>"], "image": {image_suggestion_placeholder}}}
+  "summary": "<2-3 sentence overview>",
+  "violations": [
+    {{
+      "code": "<SNAKE_CASE_CODE>",
+      "severity": "<high|medium|low>",
+      "source": "<text|image|both>",
+      "rationale": "<why this violates policy>",
+      "suggested_fix": "<concrete fix>"
+    }}
+  ],
+  "suggestions": {{
+    "text": ["<actionable text improvement>"],
+    {image_sugg}
+  }}
 }}"""
-
 
 def encode_image(data: bytes, mt: str) -> dict:
     return {"type": "image", "source": {
@@ -942,13 +965,18 @@ async def analyze(
     try:
         resp = claude.messages.create(
             model="claude-opus-4-5",
-            max_tokens=1500,
+            max_tokens=2048,
             messages=[{"role": "user", "content": content}],
         )
     except anthropic.APIError as e:
         raise HTTPException(502, f"AI service error: {e}")
 
     data    = parse_json(resp.content[0].text)
+    log.info("Claude raw response | score=%s grade=%s violations=%d text_sugg=%d image_sugg=%d",
+             data.get("score"), data.get("grade"),
+             len(data.get("violations", [])),
+             len((data.get("suggestions") or {}).get("text", []) if isinstance(data.get("suggestions"), dict) else []),
+             len((data.get("suggestions") or {}).get("image", []) if isinstance(data.get("suggestions"), dict) else []))
     score   = max(0, min(100, int(data.get("score", 50))))
     grade   = data.get("grade", "review")
     if grade not in ("pass","review","fail"):
