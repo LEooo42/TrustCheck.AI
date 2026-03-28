@@ -4,12 +4,13 @@ Auth: register (with email verification), login, me, settings
 History: get, delete one, clear all, stats
 Bookmarks: add, list, remove
 Analyze: saves to DB if logged in
+Database: Neon (PostgreSQL) via psycopg2 connection pool
 """
 
 from dotenv import load_dotenv
 load_dotenv()
 
-import os, uuid, base64, json, logging, re, time, sqlite3
+import os, uuid, base64, json, logging, re, time
 from pathlib import Path
 import hashlib, hmac, secrets, smtplib
 from email.mime.text import MIMEText
@@ -20,8 +21,10 @@ from datetime import datetime, timezone
 from urllib.parse import quote
 from typing import Optional, List, Any
 
-
 import anthropic, httpx
+import psycopg2
+import psycopg2.extras
+from psycopg2.pool import ThreadedConnectionPool
 from starlette.datastructures import UploadFile as StarletteUploadFile
 from bs4 import BeautifulSoup
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException, Request, Depends
@@ -86,46 +89,101 @@ def check_password(pw: str, stored: str) -> bool:
     except Exception:
         return False
 
-# ── Database ──────────────────────────────────────────────────────────────────
+# ── Neon / PostgreSQL connection pool ─────────────────────────────────────────
+#
+# Add DATABASE_URL to your Render environment variables.
+# Copy it from Neon Console → your project → Connection Details → Connection string.
+# It looks like:
+#   postgresql://user:password@ep-xxx-yyy.region.aws.neon.tech/dbname?sslmode=require
+#
+# Neon free tier pauses after 5 min of inactivity; the pool's minconn=1 keeps
+# at least one connection alive so cold-start latency stays low.
 
-def resolve_db_path() -> str:
-    """Return an absolute DB path outside the frontend workspace by default.
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError(
+        "DATABASE_URL is not set. "
+        "Add it in Render → Environment → DATABASE_URL "
+        "pointing at your Neon PostgreSQL connection string."
+    )
 
-    Why: when the app is served with a live-reload dev server, writing to a SQLite
-    file inside the project folder can trigger a browser refresh. That only happens
-    for logged-in users because only their analyses are persisted. The popup then
-    appears to close "by itself" even though the page actually reloaded.
+# psycopg2 accepts both 'postgres://' and 'postgresql://'
+_pg_url = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+_pool: ThreadedConnectionPool = ThreadedConnectionPool(
+    minconn=1,
+    maxconn=10,
+    dsn=_pg_url,
+)
+log.info("PostgreSQL connection pool initialised (Neon)")
+
+
+@contextmanager
+def db():
+    """Yield a psycopg2 connection from the pool.
+
+    Commits on success, rolls back on exception, always returns connection to pool.
+    Use RealDictCursor inside handlers to get dict-like rows (r["column"]).
     """
-    raw = os.getenv("DB_PATH")
-    if raw:
-        return str(Path(raw).expanduser().resolve())
+    conn = _pool.getconn()
+    try:
+        conn.autocommit = False
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        _pool.putconn(conn)
 
-    data_dir = Path.home() / ".trustcheckai"
-    data_dir.mkdir(parents=True, exist_ok=True)
-    return str((data_dir / "trustcheck.db").resolve())
 
-DB_PATH = resolve_db_path()
+# ── SQL helpers ───────────────────────────────────────────────────────────────
+# SQLite uses ?  — PostgreSQL uses %s.  These thin wrappers keep every query
+# written in the SQLite ? style and auto-convert at call time.
+
+def _q(sql: str) -> str:
+    """Replace ? placeholders with %s for psycopg2."""
+    return sql.replace("?", "%s")
+
+
+def _exec(cur, sql: str, params=()):
+    cur.execute(_q(sql), params)
+
+
+def _fetchone(cur, sql: str, params=()):
+    cur.execute(_q(sql), params)
+    return cur.fetchone()
+
+
+def _fetchall(cur, sql: str, params=()):
+    cur.execute(_q(sql), params)
+    return cur.fetchall()
+
+
+# ── Schema init ───────────────────────────────────────────────────────────────
 
 def init_db():
-    with sqlite3.connect(DB_PATH) as con:
-        con.executescript("""
-            PRAGMA journal_mode=WAL;
-
+    """Create tables if they do not exist. Safe to run on every startup."""
+    with db() as conn:
+        cur = conn.cursor()
+        cur.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id              TEXT PRIMARY KEY,
                 name            TEXT NOT NULL,
                 email           TEXT NOT NULL UNIQUE,
                 password_hash   TEXT NOT NULL,
-                verified        INTEGER NOT NULL DEFAULT 0,
+                verified        BOOLEAN NOT NULL DEFAULT FALSE,
                 created_at      TEXT NOT NULL
-            );
-
+            )
+        """)
+        cur.execute("""
             CREATE TABLE IF NOT EXISTS email_verifications (
                 token       TEXT PRIMARY KEY,
                 user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 expires_at  TEXT NOT NULL
-            );
-
+            )
+        """)
+        cur.execute("""
             CREATE TABLE IF NOT EXISTS analyses (
                 id                TEXT PRIMARY KEY,
                 user_id           TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -140,8 +198,9 @@ def init_db():
                 text_suggestions  TEXT,
                 image_suggestions TEXT,
                 created_at        TEXT NOT NULL
-            );
-
+            )
+        """)
+        cur.execute("""
             CREATE TABLE IF NOT EXISTS bookmarks (
                 id          TEXT PRIMARY KEY,
                 user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -153,80 +212,33 @@ def init_db():
                 ad_text     TEXT,
                 created_at  TEXT NOT NULL,
                 UNIQUE(user_id, analysis_id)
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_analyses_user
-                ON analyses(user_id, created_at DESC);
-            CREATE INDEX IF NOT EXISTS idx_bookmarks_user
-                ON bookmarks(user_id, created_at DESC);
+            )
         """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_analyses_user
+            ON analyses(user_id, created_at DESC)
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_bookmarks_user
+            ON bookmarks(user_id, created_at DESC)
+        """)
+        cur.close()
+    log.info("DB schema verified (Neon / PostgreSQL)")
 
-        # ── Migrations: safely add columns/tables to existing DBs ──
-        existing_cols = {
-            row[1]
-            for row in con.execute("PRAGMA table_info(users)").fetchall()
-        }
-        if "verified" not in existing_cols:
-            con.execute("ALTER TABLE users ADD COLUMN verified INTEGER NOT NULL DEFAULT 0")
-            log.info("Migration: added users.verified column")
-
-        existing_tables = {
-            row[0]
-            for row in con.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
-        }
-        if "email_verifications" not in existing_tables:
-            con.execute("""
-                CREATE TABLE email_verifications (
-                    token       TEXT PRIMARY KEY,
-                    user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                    expires_at  TEXT NOT NULL
-                )
-            """)
-            log.info("Migration: created email_verifications table")
-
-        if "bookmarks" not in existing_tables:
-            con.execute("""
-                CREATE TABLE bookmarks (
-                    id          TEXT PRIMARY KEY,
-                    user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                    analysis_id TEXT NOT NULL,
-                    platform    TEXT NOT NULL,
-                    score       INTEGER NOT NULL,
-                    verdict     TEXT NOT NULL,
-                    summary     TEXT,
-                    ad_text     TEXT,
-                    created_at  TEXT NOT NULL,
-                    UNIQUE(user_id, analysis_id)
-                )
-            """)
-            con.execute("CREATE INDEX IF NOT EXISTS idx_bookmarks_user ON bookmarks(user_id, created_at DESC)")
-            log.info("Migration: created bookmarks table")
-
-    log.info("DB ready: %s", DB_PATH)
 
 init_db()
 
-@contextmanager
-def db():
-    con = sqlite3.connect(DB_PATH)
-    con.row_factory = sqlite3.Row
-    con.execute("PRAGMA foreign_keys = ON")
-    try:
-        yield con
-        con.commit()
-    except Exception:
-        con.rollback()
-        raise
-    finally:
-        con.close()
 
 # ── Email ─────────────────────────────────────────────────────────────────────
-SMTP_HOST     = os.getenv("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT     = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER     = os.getenv("SMTP_USER", "")          # e.g. trustcheckai@gmail.com
-SMTP_PASS     = os.getenv("SMTP_PASS", "")          # Gmail app password
-FRONTEND_URL  = os.getenv("FRONTEND_URL", "http://127.0.0.1:5500").rstrip("/")
-REQUIRE_EMAIL_VERIFICATION_ON_LOGIN = os.getenv("REQUIRE_EMAIL_VERIFICATION_ON_LOGIN", "0").lower() in {"1", "true", "yes"}
+SMTP_HOST    = os.getenv("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT    = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER    = os.getenv("SMTP_USER", "")
+SMTP_PASS    = os.getenv("SMTP_PASS", "")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://127.0.0.1:5500").rstrip("/")
+REQUIRE_EMAIL_VERIFICATION_ON_LOGIN = os.getenv(
+    "REQUIRE_EMAIL_VERIFICATION_ON_LOGIN", "0"
+).lower() in {"1", "true", "yes"}
+
 
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
@@ -240,23 +252,29 @@ def parse_iso_datetime(value: str) -> datetime:
 def build_verification_url(token: str) -> str:
     return f"{FRONTEND_URL}/verify.html?token={quote(token)}"
 
-def issue_verification_token(con: sqlite3.Connection, user_id: str) -> str:
+def issue_verification_token(conn, user_id: str) -> str:
+    """Delete any existing token for this user then insert a fresh one."""
     token = secrets.token_urlsafe(32)
-    con.execute("DELETE FROM email_verifications WHERE user_id=?", (user_id,))
-    con.execute(
+    cur = conn.cursor()
+    _exec(cur, "DELETE FROM email_verifications WHERE user_id=?", (user_id,))
+    _exec(
+        cur,
         "INSERT INTO email_verifications (token,user_id,expires_at) VALUES (?,?,?)",
         (token, user_id, make_verification_expiry()),
     )
+    cur.close()
     return token
 
 def send_verification_email(to_email: str, name: str, token: str):
-    """Send email verification link. Silently skips if SMTP not configured."""
+    """Send verification link; silently skips if SMTP is not configured."""
     if not SMTP_USER or not SMTP_PASS:
-        log.warning("SMTP not configured — skipping verification email for %s. Token: %s", to_email, token)
+        log.warning(
+            "SMTP not configured — skipping verification email for %s. Token: %s",
+            to_email, token,
+        )
         return
 
     verify_url = build_verification_url(token)
-
     msg = MIMEMultipart("alternative")
     msg["Subject"] = "Verify your TrustCheck.AI account"
     msg["From"]    = f"TrustCheck.AI <{SMTP_USER}>"
@@ -299,7 +317,6 @@ If you didn't create this account, you can safely ignore this email.
 """
     msg.attach(MIMEText(text, "plain"))
     msg.attach(MIMEText(html, "html"))
-
     try:
         with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
             server.ehlo()
@@ -310,19 +327,22 @@ If you didn't create this account, you can safely ignore this email.
     except Exception as e:
         log.error("Failed to send verification email to %s: %s", to_email, e)
 
+
 # ── Auth dependency ───────────────────────────────────────────────────────────
 _bearer = HTTPBearer(auto_error=False)
 
-def get_user(creds: Optional[HTTPAuthorizationCredentials] = Depends(_bearer)) -> Optional[dict]:
+def get_user(
+    creds: Optional[HTTPAuthorizationCredentials] = Depends(_bearer),
+) -> Optional[dict]:
     if not creds:
         return None
     uid = verify_token(creds.credentials)
     if not uid:
         return None
-    with db() as con:
-        row = con.execute(
-            "SELECT id, name, email, verified FROM users WHERE id=?", (uid,)
-        ).fetchone()
+    with db() as conn:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        row = _fetchone(cur, "SELECT id, name, email, verified FROM users WHERE id=?", (uid,))
+        cur.close()
     if not row:
         return None
     user = dict(row)
@@ -333,6 +353,7 @@ def require_auth(user=Depends(get_user)) -> dict:
     if not user:
         raise HTTPException(status_code=401, detail="Authentication required.")
     return user
+
 
 # ── Rate limiter ──────────────────────────────────────────────────────────────
 RATE_LIMIT      = int(os.getenv("RATE_LIMIT", "10"))
@@ -352,6 +373,7 @@ def rate_check(ip: str) -> tuple[bool, int, int]:
         return False, 0, reset
     _rate[ip].append(now)
     return True, RATE_LIMIT - len(ts) - 1, ws
+
 
 # ── Platform policies ─────────────────────────────────────────────────────────
 POLICIES = {
@@ -396,6 +418,7 @@ LinkedIn Advertising Policies (key rules):
 - No fake endorsements or fabricated testimonials.
 """,
 }
+
 
 # ── Pydantic models ───────────────────────────────────────────────────────────
 class RegisterIn(BaseModel):
@@ -481,6 +504,17 @@ class RateStatus(BaseModel):
     remaining: int
     window_seconds: int
 
+class ImproveAdIn(BaseModel):
+    platform: str
+    ad_text: str
+    violations: Optional[List[dict]] = []
+    suggestions: Optional[List[str]] = []
+
+class ImproveAdResponse(BaseModel):
+    improved_text: str
+    changes_summary: str
+
+
 # ── Auth endpoints ────────────────────────────────────────────────────────────
 
 @app.post("/auth/register")
@@ -496,21 +530,24 @@ async def register(body: RegisterIn):
     if len(pw) < 6:
         raise HTTPException(400, "Password must be at least 6 characters.")
 
-    uid  = str(uuid.uuid4())
-    now  = utc_now().isoformat()
+    uid = str(uuid.uuid4())
+    now = utc_now().isoformat()
     try:
-        with db() as con:
-            con.execute(
-                "INSERT INTO users (id,name,email,password_hash,verified,created_at) VALUES (?,?,?,?,0,?)",
+        with db() as conn:
+            cur = conn.cursor()
+            _exec(
+                cur,
+                "INSERT INTO users (id,name,email,password_hash,verified,created_at) "
+                "VALUES (?,?,?,?,FALSE,?)",
                 (uid, name, email, hash_password(pw), now),
             )
-            v_token = issue_verification_token(con, uid)
-    except sqlite3.IntegrityError:
+            cur.close()
+            v_token = issue_verification_token(conn, uid)
+    except psycopg2.errors.UniqueViolation:
         raise HTTPException(409, "An account with this email already exists.")
 
     send_verification_email(email, name, v_token)
     log.info("Registered: %s (verified=False)", email)
-
     return {
         "token": make_token(uid),
         "user": {"id": uid, "name": name, "email": email, "verified": False},
@@ -525,10 +562,14 @@ async def login(body: LoginIn):
     pw    = body.password
     if not email or not pw:
         raise HTTPException(400, "Email and password are required.")
-    with db() as con:
-        row = con.execute(
-            "SELECT id,name,email,password_hash,verified FROM users WHERE email=?", (email,)
-        ).fetchone()
+    with db() as conn:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        row = _fetchone(
+            cur,
+            "SELECT id,name,email,password_hash,verified FROM users WHERE email=?",
+            (email,),
+        )
+        cur.close()
     if not row or not check_password(pw, row["password_hash"]):
         raise HTTPException(401, "Incorrect email or password.")
 
@@ -536,10 +577,7 @@ async def login(body: LoginIn):
     if REQUIRE_EMAIL_VERIFICATION_ON_LOGIN and not is_verified:
         raise HTTPException(
             status_code=403,
-            detail={
-                "message": "Please verify your email before logging in.",
-                "code": "EMAIL_NOT_VERIFIED",
-            },
+            detail={"message": "Please verify your email before logging in.", "code": "EMAIL_NOT_VERIFIED"},
         )
 
     log.info("Login: %s", email)
@@ -557,20 +595,23 @@ async def me(user=Depends(require_auth)):
 
 @app.get("/auth/verify-email")
 async def verify_email(token: str):
-    """Marks account as verified. Called by the frontend verify page."""
-    with db() as con:
-        row = con.execute(
-            "SELECT user_id, expires_at FROM email_verifications WHERE token=?", (token,)
-        ).fetchone()
+    with db() as conn:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        row = _fetchone(
+            cur,
+            "SELECT user_id, expires_at FROM email_verifications WHERE token=?",
+            (token,),
+        )
         if not row:
+            cur.close()
             raise HTTPException(400, "Invalid or already used verification link.")
-
         if parse_iso_datetime(row["expires_at"]) < utc_now():
-            con.execute("DELETE FROM email_verifications WHERE token=?", (token,))
+            _exec(cur, "DELETE FROM email_verifications WHERE token=?", (token,))
+            cur.close()
             raise HTTPException(400, "This verification link has expired. Please request a new one.")
-
-        con.execute("UPDATE users SET verified=1 WHERE id=?", (row["user_id"],))
-        con.execute("DELETE FROM email_verifications WHERE token=?", (token,))
+        _exec(cur, "UPDATE users SET verified=TRUE WHERE id=?", (row["user_id"],))
+        _exec(cur, "DELETE FROM email_verifications WHERE token=?", (token,))
+        cur.close()
 
     log.info("Email verified for user_id=%s", row["user_id"])
     return {"verified": True, "message": "Your email has been verified."}
@@ -578,51 +619,39 @@ async def verify_email(token: str):
 
 @app.post("/auth/resend-verification")
 async def resend_verification(user=Depends(require_auth)):
-    """Resend verification email for the currently authenticated user."""
     if user.get("verified"):
         raise HTTPException(400, "Email is already verified.")
-
-    with db() as con:
-        row = con.execute("SELECT name, email FROM users WHERE id=?", (user["id"],)).fetchone()
+    with db() as conn:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        row = _fetchone(cur, "SELECT name, email FROM users WHERE id=?", (user["id"],))
+        cur.close()
         if not row:
             raise HTTPException(404, "User not found.")
-        v_token = issue_verification_token(con, user["id"])
-
+        v_token = issue_verification_token(conn, user["id"])
     send_verification_email(row["email"], row["name"], v_token)
     return {"message": "Verification email sent."}
 
 
 @app.post("/auth/resend-verification-public")
 async def resend_verification_public(body: ResendVerificationPublicIn):
-    """Resend verification email without requiring login.
-
-    Always returns a generic success response to avoid leaking whether an email exists.
-    """
     email = body.email.strip().lower()
     if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
         raise HTTPException(400, "Invalid email address.")
-
-    with db() as con:
-        row = con.execute(
-            "SELECT id, name, email, verified FROM users WHERE email=?",
-            (email,),
-        ).fetchone()
+    with db() as conn:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        row = _fetchone(cur, "SELECT id, name, email, verified FROM users WHERE email=?", (email,))
+        cur.close()
         if row and not bool(row["verified"]):
-            v_token = issue_verification_token(con, row["id"])
+            v_token = issue_verification_token(conn, row["id"])
         else:
             v_token = None
-
     if row and v_token:
         send_verification_email(row["email"], row["name"], v_token)
-
-    return {
-        "message": "If an unverified account exists for that email, a verification email has been sent."
-    }
+    return {"message": "If an unverified account exists for that email, a verification email has been sent."}
 
 
 @app.put("/auth/settings")
 async def update_settings(body: SettingsIn, user=Depends(require_auth)):
-    """Update display name and/or password."""
     updates = []
     params  = []
 
@@ -630,7 +659,7 @@ async def update_settings(body: SettingsIn, user=Depends(require_auth)):
         name = body.name.strip()
         if not name:
             raise HTTPException(400, "Name cannot be empty.")
-        updates.append("name=?")
+        updates.append("name=%s")
         params.append(name)
 
     if body.new_password is not None:
@@ -638,23 +667,28 @@ async def update_settings(body: SettingsIn, user=Depends(require_auth)):
             raise HTTPException(400, "Current password is required to set a new password.")
         if len(body.new_password) < 6:
             raise HTTPException(400, "New password must be at least 6 characters.")
-        with db() as con:
-            row = con.execute("SELECT password_hash FROM users WHERE id=?", (user["id"],)).fetchone()
+        with db() as conn:
+            cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            row = _fetchone(cur, "SELECT password_hash FROM users WHERE id=?", (user["id"],))
+            cur.close()
         if not check_password(body.current_password, row["password_hash"]):
             raise HTTPException(401, "Current password is incorrect.")
-        updates.append("password_hash=?")
+        updates.append("password_hash=%s")
         params.append(hash_password(body.new_password))
 
     if not updates:
         raise HTTPException(400, "Nothing to update.")
 
     params.append(user["id"])
-    with db() as con:
-        con.execute(f"UPDATE users SET {', '.join(updates)} WHERE id=?", params)
+    with db() as conn:
+        cur = conn.cursor()
+        cur.execute(f"UPDATE users SET {', '.join(updates)} WHERE id=%s", params)
+        cur.close()
 
-    # Return fresh user data
-    with db() as con:
-        row = con.execute("SELECT id,name,email,verified FROM users WHERE id=?", (user["id"],)).fetchone()
+    with db() as conn:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        row = _fetchone(cur, "SELECT id,name,email,verified FROM users WHERE id=?", (user["id"],))
+        cur.close()
     return dict(row)
 
 
@@ -662,22 +696,19 @@ async def update_settings(body: SettingsIn, user=Depends(require_auth)):
 
 @app.get("/v1/stats", response_model=StatsResponse)
 async def get_stats(user=Depends(require_auth)):
-    with db() as con:
-        rows = con.execute(
-            "SELECT score, grade, platform FROM analyses WHERE user_id=?",
-            (user["id"],)
-        ).fetchall()
+    with db() as conn:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        rows = _fetchall(cur, "SELECT score, grade, platform FROM analyses WHERE user_id=?", (user["id"],))
+        cur.close()
 
     if not rows:
-        return StatsResponse(total=0, avg_score=0.0, pass_count=0,
-                             review_count=0, fail_count=0, top_platform="—")
+        return StatsResponse(total=0, avg_score=0.0, pass_count=0, review_count=0, fail_count=0, top_platform="—")
 
     total        = len(rows)
     avg_score    = round(sum(r["score"] for r in rows) / total, 1)
     pass_count   = sum(1 for r in rows if r["grade"] == "pass")
     review_count = sum(1 for r in rows if r["grade"] == "review")
     fail_count   = sum(1 for r in rows if r["grade"] == "fail")
-
     platform_counts: dict[str, int] = {}
     for r in rows:
         platform_counts[r["platform"]] = platform_counts.get(r["platform"], 0) + 1
@@ -685,8 +716,8 @@ async def get_stats(user=Depends(require_auth)):
 
     return StatsResponse(
         total=total, avg_score=avg_score,
-        pass_count=pass_count, review_count=review_count, fail_count=fail_count,
-        top_platform=top_platform,
+        pass_count=pass_count, review_count=review_count,
+        fail_count=fail_count, top_platform=top_platform,
     )
 
 
@@ -694,48 +725,57 @@ async def get_stats(user=Depends(require_auth)):
 
 @app.get("/v1/history", response_model=list[HistoryEntry])
 async def get_history(user=Depends(require_auth)):
-    with db() as con:
-        rows = con.execute(
+    with db() as conn:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        rows = _fetchall(
+            cur,
             """SELECT id,platform,ad_text,score,grade,verdict,summary,
                       text_violations,image_violations,
                       text_suggestions,image_suggestions,created_at
                FROM analyses WHERE user_id=?
                ORDER BY created_at DESC LIMIT 100""",
             (user["id"],),
-        ).fetchall()
+        )
+        cur.close()
 
     def parse(v):
         if not v: return []
         try: return json.loads(v)
         except: return []
 
-    return [HistoryEntry(
-        id=r["id"], platform=r["platform"], ad_text=r["ad_text"],
-        score=r["score"], grade=r["grade"], verdict=r["verdict"],
-        summary=r["summary"] or "",
-        text_violations=parse(r["text_violations"]),
-        image_violations=parse(r["image_violations"]),
-        text_suggestions=parse(r["text_suggestions"]),
-        image_suggestions=parse(r["image_suggestions"]),
-        created_at=r["created_at"],
-    ) for r in rows]
+    return [
+        HistoryEntry(
+            id=r["id"], platform=r["platform"], ad_text=r["ad_text"],
+            score=r["score"], grade=r["grade"], verdict=r["verdict"],
+            summary=r["summary"] or "",
+            text_violations=parse(r["text_violations"]),
+            image_violations=parse(r["image_violations"]),
+            text_suggestions=parse(r["text_suggestions"]),
+            image_suggestions=parse(r["image_suggestions"]),
+            created_at=r["created_at"],
+        )
+        for r in rows
+    ]
 
 
 @app.delete("/v1/history/{entry_id}")
 async def delete_entry(entry_id: str, user=Depends(require_auth)):
-    with db() as con:
-        r = con.execute(
-            "DELETE FROM analyses WHERE id=? AND user_id=?", (entry_id, user["id"])
-        )
-    if r.rowcount == 0:
+    with db() as conn:
+        cur = conn.cursor()
+        _exec(cur, "DELETE FROM analyses WHERE id=? AND user_id=?", (entry_id, user["id"]))
+        affected = cur.rowcount
+        cur.close()
+    if affected == 0:
         raise HTTPException(404, "Entry not found.")
     return {"deleted": entry_id}
 
 
 @app.delete("/v1/history")
 async def clear_history(user=Depends(require_auth)):
-    with db() as con:
-        con.execute("DELETE FROM analyses WHERE user_id=?", (user["id"],))
+    with db() as conn:
+        cur = conn.cursor()
+        _exec(cur, "DELETE FROM analyses WHERE user_id=?", (user["id"],))
+        cur.close()
     return {"cleared": True}
 
 
@@ -746,15 +786,18 @@ async def add_bookmark(body: BookmarkIn, user=Depends(require_auth)):
     bid = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
     try:
-        with db() as con:
-            con.execute(
+        with db() as conn:
+            cur = conn.cursor()
+            _exec(
+                cur,
                 """INSERT INTO bookmarks
                    (id,user_id,analysis_id,platform,score,verdict,summary,ad_text,created_at)
                    VALUES (?,?,?,?,?,?,?,?,?)""",
                 (bid, user["id"], body.analysis_id, body.platform, body.score,
                  body.verdict, body.summary or "", body.ad_text or "", now),
             )
-    except sqlite3.IntegrityError:
+            cur.close()
+    except psycopg2.errors.UniqueViolation:
         raise HTTPException(409, "Already bookmarked.")
     return BookmarkEntry(
         id=bid, analysis_id=body.analysis_id, platform=body.platform,
@@ -765,24 +808,27 @@ async def add_bookmark(body: BookmarkIn, user=Depends(require_auth)):
 
 @app.get("/v1/bookmarks", response_model=list[BookmarkEntry])
 async def get_bookmarks(user=Depends(require_auth)):
-    with db() as con:
-        rows = con.execute(
+    with db() as conn:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        rows = _fetchall(
+            cur,
             """SELECT id,analysis_id,platform,score,verdict,summary,ad_text,created_at
                FROM bookmarks WHERE user_id=?
                ORDER BY created_at DESC""",
             (user["id"],),
-        ).fetchall()
+        )
+        cur.close()
     return [BookmarkEntry(**dict(r)) for r in rows]
 
 
 @app.delete("/v1/bookmarks/{analysis_id}")
 async def remove_bookmark(analysis_id: str, user=Depends(require_auth)):
-    with db() as con:
-        r = con.execute(
-            "DELETE FROM bookmarks WHERE analysis_id=? AND user_id=?",
-            (analysis_id, user["id"]),
-        )
-    if r.rowcount == 0:
+    with db() as conn:
+        cur = conn.cursor()
+        _exec(cur, "DELETE FROM bookmarks WHERE analysis_id=? AND user_id=?", (analysis_id, user["id"]))
+        affected = cur.rowcount
+        cur.close()
+    if affected == 0:
         raise HTTPException(404, "Bookmark not found.")
     return {"removed": analysis_id}
 
@@ -975,14 +1021,13 @@ async def analyze(
         for up in (images or []):
             if up == "":
                 continue
-
             if not isinstance(up, (UploadFile, StarletteUploadFile)):
                 if not hasattr(up, "read") or not hasattr(up, "content_type"):
                     continue
 
-            filename = getattr(up, "filename", None)
+            filename     = getattr(up, "filename", None)
             content_type = getattr(up, "content_type", None)
-            size = getattr(up, "size", None)
+            size         = getattr(up, "size", None)
 
             if not filename and not size:
                 continue
@@ -991,41 +1036,28 @@ async def analyze(
             log.info(
                 "DEBUG read | class=%s | filename=%s | content_type=%s | bytes=%d",
                 up.__class__.__module__ + "." + up.__class__.__name__,
-                filename,
-                content_type,
-                len(b),
+                filename, content_type, len(b),
             )
-
             if not b:
                 continue
             if content_type not in ALLOWED:
                 raise HTTPException(400, f"Unsupported image type '{content_type}'.")
             if len(b) > MAX_IMG:
                 raise HTTPException(400, f"Image '{filename}' exceeds 5 MB.")
-
             content.append(encode_image(b, content_type))
 
     image_blocks = sum(1 for item in content if item.get("type") == "image")
     log.info(
         "DEBUG analyze | ad_url=%s | images_type=%s | image_blocks=%d",
-        bool(ad_url.strip()),
-        type(images).__name__,
-        image_blocks,
+        bool(ad_url.strip()), type(images).__name__, image_blocks,
     )
-
-    for i, up in enumerate(images or []):
-        log.info(
-            "DEBUG upload %d | class=%s | filename=%s | content_type=%s",
-            i,
-            up.__class__.__name__,
-            getattr(up, "filename", None),
-            getattr(up, "content_type", None),
-        )
 
     has_images = image_blocks > 0
     content.append({"type": "text", "text": build_prompt(platform, ad_text, language, has_images)})
-    log.info("Analyze | ip=%s platform=%s user=%s has_images=%s", ip, platform,
-             user["email"] if user else "guest", has_images)
+    log.info(
+        "Analyze | ip=%s platform=%s user=%s has_images=%s",
+        ip, platform, user["email"] if user else "guest", has_images,
+    )
 
     try:
         resp = claude.messages.create(
@@ -1038,15 +1070,12 @@ async def analyze(
 
     data = parse_json(resp.content[0].text)
 
-    # Hard enforcement: if no image was uploaded, Claude must not produce image data.
     if not has_images:
         for v in data.get("violations", []):
             v["source"] = "text"
         if isinstance(data.get("suggestions"), dict):
             data["suggestions"]["image"] = []
 
-    # Hard enforcement: if Claude returned image suggestions but no image-linked
-    # violations, clear those suggestions to keep the UI consistent.
     if has_images and isinstance(data.get("suggestions"), dict):
         image_suggestions = data["suggestions"].get("image", []) or []
         has_image_violation = any(
@@ -1058,19 +1087,22 @@ async def analyze(
             log.info("DEBUG guard | clearing image suggestions because no image violation was returned")
             data["suggestions"]["image"] = []
 
-    score   = max(0, min(100, int(data.get("score", 50))))
-    grade   = data.get("grade", "review")
+    score  = max(0, min(100, int(data.get("score", 50))))
+    grade  = data.get("grade", "review")
     if grade not in ("pass","review","fail"):
         grade = "pass" if score >= 80 else ("review" if score >= 60 else "fail")
     verdict = "Safe" if grade == "pass" else ("Borderline" if grade == "review" else "Risky")
 
-    violations = [Violation(
-        code=str(v.get("code","UNKNOWN")),
-        severity=str(v.get("severity","medium")),
-        source=str(v.get("source","text")),
-        rationale=str(v.get("rationale","")),
-        suggested_fix=str(v.get("suggested_fix","")),
-    ) for v in data.get("violations",[])]
+    violations = [
+        Violation(
+            code=str(v.get("code","UNKNOWN")),
+            severity=str(v.get("severity","medium")),
+            source=str(v.get("source","text")),
+            rationale=str(v.get("rationale","")),
+            suggested_fix=str(v.get("suggested_fix","")),
+        )
+        for v in data.get("violations",[])
+    ]
 
     raw_s = data.get("suggestions", [])
     if isinstance(raw_s, dict):
@@ -1088,8 +1120,10 @@ async def analyze(
     analysis_id = str(uuid.uuid4())
 
     if user:
-        with db() as con:
-            con.execute(
+        with db() as conn:
+            cur = conn.cursor()
+            _exec(
+                cur,
                 """INSERT INTO analyses
                    (id,user_id,platform,ad_text,score,grade,verdict,
                     summary,text_violations,image_violations,
@@ -1101,6 +1135,7 @@ async def analyze(
                  json.dumps(text_s), json.dumps(image_s),
                  datetime.now(timezone.utc).isoformat()),
             )
+            cur.close()
         log.info("Saved analysis %s user=%s score=%d", analysis_id, user["email"], score)
 
     return AnalyzeResponse(
@@ -1117,18 +1152,6 @@ async def analyze(
 
 
 # ── Improve Ad endpoint ───────────────────────────────────────────────────────
-
-class ImproveAdIn(BaseModel):
-    platform: str
-    ad_text: str
-    violations: Optional[List[dict]] = []
-    suggestions: Optional[List[str]] = []
-
-
-class ImproveAdResponse(BaseModel):
-    improved_text: str
-    changes_summary: str
-
 
 @app.post("/v1/improve-ad", response_model=ImproveAdResponse)
 async def improve_ad(
@@ -1211,22 +1234,18 @@ Return ONLY a single valid JSON object — no markdown, no prose, no fences:
         raise HTTPException(502, f"AI service error: {e}")
 
     data = parse_json(resp.content[0].text)
-
     improved = str(data.get("improved_text", "")).strip()
     summary  = str(data.get("changes_summary", "")).strip()
 
     if not improved:
         raise HTTPException(502, "AI returned an empty improved ad.")
 
-    log.info(
-        "ImproveAd | ip=%s platform=%s user=%s",
-        ip, platform, user["email"] if user else "guest",
-    )
-
+    log.info("ImproveAd | ip=%s platform=%s user=%s", ip, platform, user["email"] if user else "guest")
     return ImproveAdResponse(improved_text=improved, changes_summary=summary)
 
 
 # ── Health ────────────────────────────────────────────────────────────────────
+
 @app.get("/health")
 def health():
     return {"status": "ok", "version": "3.0.0", "platforms": list(POLICIES)}
