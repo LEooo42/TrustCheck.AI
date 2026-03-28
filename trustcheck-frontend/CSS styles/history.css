@@ -362,6 +362,104 @@ Block Contains:
     display: none;
 }
 
+/* ===========================================================================================================
+User Menu (shared auth styles)
+===========================================================================================================*/
+
+.user-menu {
+    position: absolute;
+    min-width: 200px;
+    background: #13141a;
+    border: 1px solid rgba(56, 133, 241, 0.22);
+    border-radius: 14px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(56,133,241,0.06);
+    z-index: 3000;
+    overflow: hidden;
+    animation: menuIn 0.15s cubic-bezier(0.22, 1, 0.36, 1);
+    transform-origin: top right;
+}
+
+.user-menu.hidden { display: none; }
+.user-menu.active { display: block; }
+
+@keyframes menuIn {
+    from { opacity: 0; transform: scale(0.95) translateY(-6px); }
+    to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+
+.user-menu__info {
+    padding: 14px 16px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.user-menu__name  { font-size: 13px; font-weight: 600; color: #e0e4f0; }
+.user-menu__email { font-size: 11px; color: #556; }
+
+.user-menu__divider { height: 1px; background: rgba(255,255,255,0.06); margin: 0; }
+
+.user-menu__item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 11px 16px;
+    border: none;
+    background: transparent;
+    color: #9aa;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'Poppins', sans-serif;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.user-menu__item svg { width: 15px; height: 15px; flex-shrink: 0; }
+.user-menu__item:hover { background: rgba(255,255,255,0.05); color: #cdd; }
+.user-menu__item--danger { color: #ff6b6b; }
+.user-menu__item--danger:hover { background: rgba(255,80,80,0.1); color: #ff8080; }
+
+a.user-menu__item { text-decoration: none; display: flex; }
+
+.user-menu__badge {
+    font-size: 10px;
+    color: #ffd166;
+    background: rgba(255,209,102,0.1);
+    border: 1px solid rgba(255,209,102,0.25);
+    border-radius: 6px;
+    padding: 2px 7px;
+    margin-top: 4px;
+    display: inline-block;
+}
+.user-menu__badge.hidden { display: none; }
+
+.auth-toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #13141a;
+    border: 1px solid rgba(255,209,102,0.3);
+    border-radius: 12px;
+    padding: 12px 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: #c8d0e8;
+    z-index: 5000;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    animation: toastIn 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+    white-space: nowrap;
+}
+
+@keyframes toastIn {
+    from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
 /* 
 ===========================================================================================================
 Animation Settings
@@ -1327,3 +1425,83 @@ History toolbar — mobile layout fix
 
 /* Settings link — locked state */
 a[data-locked] { cursor: not-allowed !important; pointer-events: none; }
+
+/* ═══════════════════════════════════════════════════════
+   HISTORY / BOOKMARKS TAB SWITCHER
+═══════════════════════════════════════════════════════ */
+.history-tabs {
+    display: flex;
+    gap: 6px;
+    margin: 0 auto 20px;
+    max-width: 860px;
+    padding: 0 16px;
+}
+
+.htab {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 18px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,.1);
+    background: rgba(255,255,255,.04);
+    color: #8899bb;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background .18s, color .18s, border-color .18s;
+}
+
+.htab:hover {
+    background: rgba(56,133,241,.12);
+    color: #c8d8f0;
+}
+
+.htab--active {
+    background: rgba(56,133,241,.18);
+    border-color: rgba(56,133,241,.45);
+    color: #fff;
+}
+
+.htab__count {
+    background: rgba(255,255,255,.12);
+    color: #aabbd4;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 1px 7px;
+    border-radius: 20px;
+    min-width: 22px;
+    text-align: center;
+}
+
+.htab__count--blue {
+    background: rgba(56,133,241,.25);
+    color: #7ab4f5;
+}
+
+/* ═══════════════════════════════════════════════════════
+   BOOKMARKS WRAPPER / CARDS
+═══════════════════════════════════════════════════════ */
+.bookmarks-wrapper {
+    margin-top: 0;
+}
+
+.bookmark-card {
+    border-left: 3px solid rgba(56,133,241,.5);
+}
+
+.hcard__desc-col {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+}
+
+.hcard__summary {
+    font-size: 12px;
+    color: #667;
+    line-height: 1.5;
+    margin: 0;
+    font-style: italic;
+}

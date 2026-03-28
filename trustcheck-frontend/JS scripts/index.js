@@ -9,6 +9,8 @@ const ANALYZE_ENDPOINT = `${API_BASE}/v1/analyze`;
 const RATE_STATUS_ENDPOINT = `${API_BASE}/v1/rate-status`;
 const STATS_ENDPOINT      = `${API_BASE}/v1/stats`;
 const BOOKMARKS_ENDPOINT  = `${API_BASE}/v1/bookmarks`;
+const IMPROVE_ENDPOINT    = `${API_BASE}/v1/improve-ad`;
+
 
 const MAX_HISTORY = 50;
 const REQUIRE_IMAGE = false; 
@@ -448,6 +450,22 @@ function showPopup(result, apiResult = {}) {
     };
   }
 
+  // ── Improve My Ad ──────────────────────────────────────────
+  const improveAdBtn = document.getElementById("improveAdBtn");
+  if (improveAdBtn) {
+    improveAdBtn.onclick = () => {
+      const adText = textInput ? textInput.value.trim() : "";
+      if (!adText) { alert("No ad text to improve."); return; }
+      openImproveModal({
+        platform,
+        ad_text: adText,
+        violations: apiResult?.result?.violations || [],
+        suggestions: (result.text_suggestions || []).concat(result.image_suggestions || []),
+      });
+    };
+  }
+
+
   // ── Feedback (like / dislike) ───────────────────────────────
   const likeBtn    = document.getElementById("feedbackLike");
   const dislikeBtn = document.getElementById("feedbackDislike");
@@ -520,7 +538,8 @@ function showPopup(result, apiResult = {}) {
           });
           bookmarkBtn.classList.remove("bookmark-btn--saved");
           bookmarkLabel.textContent = "Bookmark";
-        } catch { alert("Could not remove bookmark."); }
+          showBookmarkToast("Bookmark removed.");
+        } catch { showBookmarkToast("Could not remove bookmark.", true); }
       } else {
         // Add bookmark
         try {
@@ -542,13 +561,14 @@ function showPopup(result, apiResult = {}) {
           if (res.ok) {
             bookmarkBtn.classList.add("bookmark-btn--saved");
             bookmarkLabel.textContent = "Bookmarked";
+            showBookmarkToast("✓ Bookmarked!");
           } else if (res.status === 409) {
             bookmarkBtn.classList.add("bookmark-btn--saved");
             bookmarkLabel.textContent = "Bookmarked";
           } else {
-            alert("Could not save bookmark.");
+            showBookmarkToast("Could not save bookmark.", true);
           }
-        } catch { alert("Could not reach the server."); }
+        } catch { showBookmarkToast("Could not reach the server.", true); }
       }
     };
   }
@@ -1017,3 +1037,129 @@ updateRateIndicator();
   } catch {}
 })();
 
+
+/* ═══════════════════════════════════════════════════════════════
+   IMPROVE MY AD  — modal logic
+═══════════════════════════════════════════════════════════════ */
+
+function openImproveModal(payload) {
+  const modal   = document.getElementById("improveAdModal");
+  const loading = document.getElementById("improveLoading");
+  const result  = document.getElementById("improveResult");
+  const errBox  = document.getElementById("improveError");
+  const errMsg  = document.getElementById("improveErrorMsg");
+
+  if (!modal) return;
+
+  // Reset state
+  loading.classList.remove("hidden");
+  result.classList.add("hidden");
+  errBox.classList.add("hidden");
+  modal.classList.remove("hidden");
+  modal.style.display = "flex";
+  document.body.style.overflow = "hidden";
+
+  // Close button
+  document.getElementById("improveModalClose").onclick = () => {
+    modal.style.display = "none";
+    modal.classList.add("hidden");
+    document.body.style.overflow = "";
+  };
+  // Backdrop click
+  modal.onclick = (e) => {
+    if (e.target === modal) {
+      modal.style.display = "none";
+      modal.classList.add("hidden");
+      document.body.style.overflow = "";
+    }
+  };
+
+  const authToken = window.TC_AUTH && window.TC_AUTH.getToken();
+
+  fetch(IMPROVE_ENDPOINT, {
+    method: "POST",
+    headers: Object.assign(
+      { "Content-Type": "application/json" },
+      authToken ? { Authorization: "Bearer " + authToken } : {}
+    ),
+    body: JSON.stringify(payload),
+  })
+    .then(async res => {
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.detail?.message || body?.detail || `HTTP ${res.status}`);
+      }
+      return res.json();
+    })
+    .then(data => {
+      loading.classList.add("hidden");
+
+      const improvedText = document.getElementById("improvedAdText");
+      const changesSummary = document.getElementById("improveChangesSummary");
+
+      improvedText.textContent = data.improved_text || "";
+      changesSummary.textContent = data.changes_summary || "";
+
+      // Copy improved text button
+      document.getElementById("copyImprovedBtn").onclick = () => {
+        navigator.clipboard.writeText(data.improved_text || "").then(() => {
+          const btn = document.getElementById("copyImprovedBtn");
+          const orig = btn.innerHTML;
+          btn.innerHTML = `<svg viewBox="0 0 16 16" fill="none"><path d="M3 8l4 4 6-7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Copied!`;
+          setTimeout(() => { btn.innerHTML = orig; }, 1800);
+        }).catch(() => {});
+      };
+
+      // "Use This Ad & Re-analyze" button
+      document.getElementById("useImprovedBtn").onclick = () => {
+        if (textInput) textInput.value = data.improved_text || "";
+        modal.style.display = "none";
+        modal.classList.add("hidden");
+        document.body.style.overflow = "";
+        // close main result popup and re-run
+        closePopup(true);
+        setTimeout(() => {
+          validateForm && validateForm();
+          analyzeBtn && analyzeBtn.click();
+        }, 200);
+      };
+
+      result.classList.remove("hidden");
+    })
+    .catch(err => {
+      loading.classList.add("hidden");
+      errMsg.textContent = err.message || "Something went wrong. Please try again.";
+      errBox.classList.remove("hidden");
+    });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BOOKMARK TOAST  — non-blocking feedback
+═══════════════════════════════════════════════════════════════ */
+
+function showBookmarkToast(msg, isError = false) {
+  let toast = document.getElementById("bookmarkToast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "bookmarkToast";
+    toast.style.cssText = `
+      position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(20px);
+      background:${isError ? "#c0392b" : "#1a6fd4"};color:#fff;
+      padding:10px 22px;border-radius:10px;font-size:13px;font-weight:500;
+      box-shadow:0 4px 20px rgba(0,0,0,.35);
+      opacity:0;transition:opacity .25s,transform .25s;z-index:9999;pointer-events:none;
+    `;
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.background = isError ? "#c0392b" : "#1a6fd4";
+  requestAnimationFrame(() => {
+    toast.style.opacity = "1";
+    toast.style.transform = "translateX(-50%) translateY(0)";
+  });
+  clearTimeout(toast._hideTimer);
+  toast._hideTimer = setTimeout(() => {
+    toast.style.opacity = "0";
+    toast.style.transform = "translateX(-50%) translateY(20px)";
+  }, 2400);
+}

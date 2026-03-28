@@ -31,6 +31,7 @@ function populatePage(user) {
     // Verification status
     const vsEl = document.getElementById("verificationStatus");
     const resendBtn = document.getElementById("resendVerificationBtn");
+    resendBtn.classList.add("hidden");
     if (verified) {
         vsEl.innerHTML = `
             <div class="verify-badge verify-badge--ok">
@@ -93,6 +94,14 @@ function showMsg(id, text, isError) {
     el.className   = "settings-msg " + (isError ? "settings-msg--error" : "settings-msg--ok");
 }
 
+function extractErrorMessage(data, fallback) {
+    if (!data) return fallback;
+    if (typeof data.detail === "string") return data.detail;
+    if (data.detail && typeof data.detail.message === "string") return data.detail.message;
+    if (typeof data.message === "string") return data.message;
+    return fallback;
+}
+
 function setBusy(btnId, busy, label) {
     const btn = document.getElementById(btnId);
     if (!btn) return;
@@ -113,7 +122,7 @@ document.getElementById("saveProfileBtn").addEventListener("click", async () => 
             body:    JSON.stringify({ name }),
         });
         const data = await res.json();
-        if (!res.ok) return showMsg("profileMsg", data.detail || "Update failed.", true);
+        if (!res.ok) return showMsg("profileMsg", extractErrorMessage(data, "Update failed."), true);
 
         // Update local session
         const sess = JSON.parse(localStorage.getItem("tc_session") || "null");
@@ -149,7 +158,7 @@ document.getElementById("savePasswordBtn").addEventListener("click", async () =>
             body:    JSON.stringify({ current_password: current, new_password: newPw }),
         });
         const data = await res.json();
-        if (!res.ok) return showMsg("securityMsg", data.detail || "Update failed.", true);
+        if (!res.ok) return showMsg("securityMsg", extractErrorMessage(data, "Update failed."), true);
 
         document.getElementById("currentPassword").value = "";
         document.getElementById("newPassword").value     = "";
@@ -171,7 +180,7 @@ document.getElementById("resendVerificationBtn").addEventListener("click", async
             headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
-        if (!res.ok) return showMsg("verificationMsg", data.detail || "Failed to send.", true);
+        if (!res.ok) return showMsg("verificationMsg", extractErrorMessage(data, "Failed to send."), true);
         showMsg("verificationMsg", "Verification email sent! Check your inbox.", false);
     } catch {
         showMsg("verificationMsg", "Could not reach the server.", true);

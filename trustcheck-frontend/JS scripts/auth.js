@@ -53,6 +53,7 @@
           <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password"/>
         </div>
         <p class="auth-error hidden" id="loginError"></p>
+        <button type="button" class="auth-helper-btn hidden" id="loginResendVerification">Resend verification email</button>
         <button type="button" class="auth-submit" id="loginSubmit">Log In</button>
         </form>
       </div>
@@ -179,6 +180,13 @@
     el.textContent = msg;
     el.classList.remove("hidden");
   }
+  function extractErrorMessage(data, fallback) {
+    if (!data) return fallback;
+    if (typeof data.detail === "string") return data.detail;
+    if (data.detail && typeof data.detail.message === "string") return data.detail.message;
+    if (typeof data.message === "string") return data.message;
+    return fallback;
+  }
   function hideError(id) {
     const el = document.getElementById(id);
     if (el) el.classList.add("hidden");
@@ -208,8 +216,8 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, password: pw }),
       });
-      const data = await res.json();
-      if (!res.ok) return showError("signupError", data.detail || "Registration failed.");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return showError("signupError", extractErrorMessage(data, "Registration failed."));
       saveToken(data.token);
       saveSession(data.user);
       closeModal();
@@ -226,6 +234,7 @@
   /* ── Log In ────────────────────────────────────────────────── */
   async function handleLogin() {
     hideError("loginError");
+    document.getElementById("loginResendVerification").classList.add("hidden");
     const email = document.getElementById("loginEmail").value.trim().toLowerCase();
     const pw    = document.getElementById("loginPassword").value;
 
@@ -238,12 +247,19 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password: pw }),
       });
-      const data = await res.json();
-      if (!res.ok) return showError("loginError", data.detail || "Login failed.");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const message = extractErrorMessage(data, "Login failed.");
+        if (data.detail && data.detail.code === "EMAIL_NOT_VERIFIED") {
+          document.getElementById("loginResendVerification").classList.remove("hidden");
+        }
+        return showError("loginError", message);
+      }
       saveToken(data.token);
       saveSession(data.user);
       closeModal();
       updateHeaderButton();
+      if (data.needs_verification) showVerificationReminder();
     } catch {
       showError("loginError", "Could not reach the server. Is the backend running?");
     } finally {
@@ -392,7 +408,37 @@
   document.getElementById("authClose").addEventListener("click", closeModal);
   document.querySelectorAll(".auth-tab").forEach(btn =>
     btn.addEventListener("click", () => switchTab(btn.dataset.authTab)));
+  async function handleResendVerificationFromLogin() {
+    hideError("loginError");
+    const email = document.getElementById("loginEmail").value.trim().toLowerCase();
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      return showError("loginError", "Enter your email first, then resend the verification link.");
+    }
+
+    const btn = document.getElementById("loginResendVerification");
+    btn.disabled = true;
+    btn.textContent = "Sending…";
+    try {
+      const res = await fetch(`${API_BASE}/auth/resend-verification-public`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return showError("loginError", extractErrorMessage(data, "Could not resend the verification email."));
+      }
+      showError("loginError", data.message || "If that account exists and is unverified, a new email is on its way.");
+    } catch {
+      showError("loginError", "Could not reach the server. Is the backend running?");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Resend verification email";
+    }
+  }
+
   document.getElementById("loginSubmit").addEventListener("click", handleLogin);
+  document.getElementById("loginResendVerification").addEventListener("click", handleResendVerificationFromLogin);
   document.getElementById("signupSubmit").addEventListener("click", handleSignup);
   document.getElementById("loginPassword").addEventListener("keydown", e => {
     if (e.key === "Enter") handleLogin();

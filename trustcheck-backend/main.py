@@ -17,6 +17,7 @@ from email.mime.multipart import MIMEMultipart
 from collections import defaultdict
 from contextlib import contextmanager
 from datetime import datetime, timezone
+from urllib.parse import quote
 from typing import Optional, List, Any
 
 
@@ -224,7 +225,29 @@ SMTP_HOST     = os.getenv("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT     = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER     = os.getenv("SMTP_USER", "")          # e.g. trustcheckai@gmail.com
 SMTP_PASS     = os.getenv("SMTP_PASS", "")          # Gmail app password
-FRONTEND_URL  = os.getenv("FRONTEND_URL", "http://127.0.0.1:5500")
+FRONTEND_URL  = os.getenv("FRONTEND_URL", "http://127.0.0.1:5500").rstrip("/")
+REQUIRE_EMAIL_VERIFICATION_ON_LOGIN = os.getenv("REQUIRE_EMAIL_VERIFICATION_ON_LOGIN", "0").lower() in {"1", "true", "yes"}
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+def make_verification_expiry(hours: int = 24) -> str:
+    return datetime.fromtimestamp(time.time() + hours * 3600, tz=timezone.utc).isoformat()
+
+def parse_iso_datetime(value: str) -> datetime:
+    return datetime.fromisoformat(value)
+
+def build_verification_url(token: str) -> str:
+    return f"{FRONTEND_URL}/verify.html?token={quote(token)}"
+
+def issue_verification_token(con: sqlite3.Connection, user_id: str) -> str:
+    token = secrets.token_urlsafe(32)
+    con.execute("DELETE FROM email_verifications WHERE user_id=?", (user_id,))
+    con.execute(
+        "INSERT INTO email_verifications (token,user_id,expires_at) VALUES (?,?,?)",
+        (token, user_id, make_verification_expiry()),
+    )
+    return token
 
 def send_verification_email(to_email: str, name: str, token: str):
     """Send email verification link. Silently skips if SMTP not configured."""
@@ -232,7 +255,7 @@ def send_verification_email(to_email: str, name: str, token: str):
         log.warning("SMTP not configured — skipping verification email for %s. Token: %s", to_email, token)
         return
 
-    verify_url = f"{FRONTEND_URL}/HTML pages/verify.html?token={token}"
+    verify_url = build_verification_url(token)
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = "Verify your TrustCheck.AI account"
@@ -300,7 +323,11 @@ def get_user(creds: Optional[HTTPAuthorizationCredentials] = Depends(_bearer)) -
         row = con.execute(
             "SELECT id, name, email, verified FROM users WHERE id=?", (uid,)
         ).fetchone()
-    return dict(row) if row else None
+    if not row:
+        return None
+    user = dict(row)
+    user["verified"] = bool(user.get("verified"))
+    return user
 
 def require_auth(user=Depends(get_user)) -> dict:
     if not user:
@@ -379,6 +406,9 @@ class RegisterIn(BaseModel):
 class LoginIn(BaseModel):
     email: str
     password: str
+
+class ResendVerificationPublicIn(BaseModel):
+    email: str
 
 class SettingsIn(BaseModel):
     name: Optional[str] = None
@@ -467,24 +497,16 @@ async def register(body: RegisterIn):
         raise HTTPException(400, "Password must be at least 6 characters.")
 
     uid  = str(uuid.uuid4())
-    now  = datetime.now(timezone.utc).isoformat()
+    now  = utc_now().isoformat()
     try:
         with db() as con:
             con.execute(
                 "INSERT INTO users (id,name,email,password_hash,verified,created_at) VALUES (?,?,?,?,0,?)",
                 (uid, name, email, hash_password(pw), now),
             )
+            v_token = issue_verification_token(con, uid)
     except sqlite3.IntegrityError:
         raise HTTPException(409, "An account with this email already exists.")
-
-    # Generate verification token (24 hour expiry)
-    v_token  = secrets.token_urlsafe(32)
-    v_expiry = datetime.fromtimestamp(time.time() + 86400, tz=timezone.utc).isoformat()
-    with db() as con:
-        con.execute(
-            "INSERT INTO email_verifications (token,user_id,expires_at) VALUES (?,?,?)",
-            (v_token, uid, v_expiry),
-        )
 
     send_verification_email(email, name, v_token)
     log.info("Registered: %s (verified=False)", email)
@@ -492,7 +514,8 @@ async def register(body: RegisterIn):
     return {
         "token": make_token(uid),
         "user": {"id": uid, "name": name, "email": email, "verified": False},
-        "message": "Account created. Please check your email to verify your address."
+        "message": "Account created. Please check your email to verify your address.",
+        "needs_verification": True,
     }
 
 
@@ -508,10 +531,22 @@ async def login(body: LoginIn):
         ).fetchone()
     if not row or not check_password(pw, row["password_hash"]):
         raise HTTPException(401, "Incorrect email or password.")
+
+    is_verified = bool(row["verified"])
+    if REQUIRE_EMAIL_VERIFICATION_ON_LOGIN and not is_verified:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "message": "Please verify your email before logging in.",
+                "code": "EMAIL_NOT_VERIFIED",
+            },
+        )
+
     log.info("Login: %s", email)
     return {
         "token": make_token(row["id"]),
-        "user": {"id": row["id"], "name": row["name"], "email": row["email"], "verified": bool(row["verified"])}
+        "user": {"id": row["id"], "name": row["name"], "email": row["email"], "verified": is_verified},
+        "needs_verification": not is_verified,
     }
 
 
@@ -522,68 +557,67 @@ async def me(user=Depends(require_auth)):
 
 @app.get("/auth/verify-email")
 async def verify_email(token: str):
-    """Marks account as verified. Called when user clicks the email link."""
-    now = datetime.now(timezone.utc).isoformat()
+    """Marks account as verified. Called by the frontend verify page."""
     with db() as con:
         row = con.execute(
             "SELECT user_id, expires_at FROM email_verifications WHERE token=?", (token,)
         ).fetchone()
         if not row:
-            return HTMLResponse(_verify_page("Invalid or already used verification link.", success=False))
-        if row["expires_at"] < now:
+            raise HTTPException(400, "Invalid or already used verification link.")
+
+        if parse_iso_datetime(row["expires_at"]) < utc_now():
             con.execute("DELETE FROM email_verifications WHERE token=?", (token,))
-            return HTMLResponse(_verify_page("This verification link has expired. Please request a new one.", success=False))
+            raise HTTPException(400, "This verification link has expired. Please request a new one.")
+
         con.execute("UPDATE users SET verified=1 WHERE id=?", (row["user_id"],))
         con.execute("DELETE FROM email_verifications WHERE token=?", (token,))
 
     log.info("Email verified for user_id=%s", row["user_id"])
-    return HTMLResponse(_verify_page("Your email has been verified! You can now close this tab.", success=True))
-
-
-def _verify_page(message: str, success: bool) -> str:
-    color  = "#39d98a" if success else "#ff6b6b"
-    icon   = "✓" if success else "✗"
-    return f"""<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><title>Email Verification — TrustCheck.AI</title>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
-</head>
-<body style="margin:0;background:#0a0f1e;font-family:Poppins,sans-serif;display:flex;
-             align-items:center;justify-content:center;min-height:100vh">
-  <div style="background:#13141a;border:1px solid rgba(56,133,241,0.2);border-radius:20px;
-              padding:48px 40px;text-align:center;max-width:420px;width:90%">
-    <div style="width:64px;height:64px;border-radius:50%;background:{color}22;
-                border:2px solid {color};display:flex;align-items:center;justify-content:center;
-                margin:0 auto 24px;font-size:28px;color:{color}">{icon}</div>
-    <h1 style="color:#fff;font-size:22px;margin:0 0 12px">TrustCheck<span style="color:#3885f1">.AI</span></h1>
-    <p style="color:#8899aa;font-size:14px;line-height:1.6;margin:0 0 28px">{message}</p>
-    <a href="/" style="display:inline-block;background:#3885f1;color:#fff;text-decoration:none;
-                       padding:12px 28px;border-radius:10px;font-weight:600;font-size:14px">
-      Back to TrustCheck.AI
-    </a>
-  </div>
-</body>
-</html>"""
+    return {"verified": True, "message": "Your email has been verified."}
 
 
 @app.post("/auth/resend-verification")
 async def resend_verification(user=Depends(require_auth)):
-    """Resend verification email."""
+    """Resend verification email for the currently authenticated user."""
     if user.get("verified"):
         raise HTTPException(400, "Email is already verified.")
+
     with db() as con:
         row = con.execute("SELECT name, email FROM users WHERE id=?", (user["id"],)).fetchone()
-        # Delete any old tokens
-        con.execute("DELETE FROM email_verifications WHERE user_id=?", (user["id"],))
-    v_token  = secrets.token_urlsafe(32)
-    v_expiry = datetime.fromtimestamp(time.time() + 86400, tz=timezone.utc).isoformat()
-    with db() as con:
-        con.execute(
-            "INSERT INTO email_verifications (token,user_id,expires_at) VALUES (?,?,?)",
-            (v_token, user["id"], v_expiry),
-        )
+        if not row:
+            raise HTTPException(404, "User not found.")
+        v_token = issue_verification_token(con, user["id"])
+
     send_verification_email(row["email"], row["name"], v_token)
     return {"message": "Verification email sent."}
+
+
+@app.post("/auth/resend-verification-public")
+async def resend_verification_public(body: ResendVerificationPublicIn):
+    """Resend verification email without requiring login.
+
+    Always returns a generic success response to avoid leaking whether an email exists.
+    """
+    email = body.email.strip().lower()
+    if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+        raise HTTPException(400, "Invalid email address.")
+
+    with db() as con:
+        row = con.execute(
+            "SELECT id, name, email, verified FROM users WHERE email=?",
+            (email,),
+        ).fetchone()
+        if row and not bool(row["verified"]):
+            v_token = issue_verification_token(con, row["id"])
+        else:
+            v_token = None
+
+    if row and v_token:
+        send_verification_email(row["email"], row["name"], v_token)
+
+    return {
+        "message": "If an unverified account exists for that email, a verification email has been sent."
+    }
 
 
 @app.put("/auth/settings")
@@ -1080,6 +1114,116 @@ async def analyze(
             image_suggestions=image_s,
         ),
     )
+
+
+# ── Improve Ad endpoint ───────────────────────────────────────────────────────
+
+class ImproveAdIn(BaseModel):
+    platform: str
+    ad_text: str
+    violations: Optional[List[dict]] = []
+    suggestions: Optional[List[str]] = []
+
+
+class ImproveAdResponse(BaseModel):
+    improved_text: str
+    changes_summary: str
+
+
+@app.post("/v1/improve-ad", response_model=ImproveAdResponse)
+async def improve_ad(
+    request: Request,
+    body: ImproveAdIn,
+    user: Optional[dict] = Depends(get_user),
+):
+    """Rewrite the ad copy to fix violations and apply suggestions."""
+    ip = get_ip(request)
+    ok, remaining, reset = rate_check(ip)
+    if not ok:
+        raise HTTPException(429, detail={
+            "error": "Rate limit exceeded",
+            "message": f"You have used all {RATE_LIMIT} analyses for this hour. Try again in {reset} seconds.",
+            "remaining": 0, "reset_in_seconds": reset, "limit": RATE_LIMIT,
+        })
+
+    platform = body.platform.lower().strip()
+    if platform not in POLICIES:
+        raise HTTPException(400, f"Unsupported platform '{platform}'.")
+    if not body.ad_text.strip():
+        raise HTTPException(400, "ad_text must not be empty.")
+    if len(body.ad_text) > 2000:
+        raise HTTPException(400, "ad_text exceeds 2000 characters.")
+
+    policy = POLICIES.get(platform, POLICIES["google"])
+
+    violations_text = ""
+    if body.violations:
+        lines = []
+        for v in body.violations[:6]:
+            sev  = v.get("severity", "medium").upper()
+            code = v.get("code", "ISSUE")
+            rat  = v.get("rationale", "")
+            fix  = v.get("suggested_fix", "")
+            lines.append(f"  • [{sev}] {code}: {rat} → Fix: {fix}")
+        violations_text = "VIOLATIONS TO FIX:\n" + "\n".join(lines)
+
+    suggestions_text = ""
+    if body.suggestions:
+        suggestions_text = "IMPROVEMENT SUGGESTIONS:\n" + "\n".join(
+            f"  • {s}" for s in body.suggestions[:8]
+        )
+
+    prompt = f"""You are TrustCheck.AI, a senior copywriter and advertising compliance expert.
+
+Platform: {platform.upper()}
+
+POLICIES:
+{policy}
+
+ORIGINAL AD TEXT:
+{body.ad_text.strip()}
+
+{violations_text}
+
+{suggestions_text}
+
+TASK:
+Rewrite the ad text to:
+1. Fix every listed violation while keeping the ad's core message and intent.
+2. Apply as many improvement suggestions as naturally possible.
+3. Keep the tone, style, and approximate length of the original.
+4. Do NOT introduce new policy violations.
+
+Return ONLY a single valid JSON object — no markdown, no prose, no fences:
+
+{{
+  "improved_text": "<the rewritten ad copy>",
+  "changes_summary": "<2-3 sentences summarising what was changed and why>"
+}}"""
+
+    try:
+        resp = claude.messages.create(
+            model="claude-opus-4-5",
+            max_tokens=1000,
+            messages=[{"role": "user", "content": prompt}],
+        )
+    except anthropic.APIError as e:
+        raise HTTPException(502, f"AI service error: {e}")
+
+    data = parse_json(resp.content[0].text)
+
+    improved = str(data.get("improved_text", "")).strip()
+    summary  = str(data.get("changes_summary", "")).strip()
+
+    if not improved:
+        raise HTTPException(502, "AI returned an empty improved ad.")
+
+    log.info(
+        "ImproveAd | ip=%s platform=%s user=%s",
+        ip, platform, user["email"] if user else "guest",
+    )
+
+    return ImproveAdResponse(improved_text=improved, changes_summary=summary)
 
 
 # ── Health ────────────────────────────────────────────────────────────────────

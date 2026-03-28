@@ -51,7 +51,7 @@
     </div>
 
     <script>
-        const API_BASE = "trustcheck-frontend/JS scripts/index.js";
+        const API_BASE = "https://trustcheck-ai.onrender.com";
         const params   = new URLSearchParams(window.location.search);
         const token    = params.get("token");
 
@@ -70,23 +70,25 @@
 
             try {
                 const res = await fetch(`${API_BASE}/auth/verify-email?token=${encodeURIComponent(token)}`);
-                if (res.ok) {
-                    icon.className   = "icon icon--success";
-                    icon.textContent = "✓";
-                    msg.textContent  = "Your email has been verified! You can now close this tab or return to TrustCheck.AI.";
+                const data = await res.json().catch(() => ({}));
 
-                    const session = JSON.parse(localStorage.getItem("tc_session") || "null");
-                    if (session) {
-                        session.verified = true;
-                        localStorage.setItem("tc_session", JSON.stringify(session));
-                    }
-                } else {
-                    throw new Error("invalid");
+                if (!res.ok) {
+                    throw new Error(data.detail || data.message || "This link is invalid or has expired.");
                 }
-            } catch {
+
+                icon.className   = "icon icon--success";
+                icon.textContent = "✓";
+                msg.textContent  = data.message || "Your email has been verified! You can now close this tab or return to TrustCheck.AI.";
+
+                const session = JSON.parse(localStorage.getItem("tc_session") || "null");
+                if (session) {
+                    session.verified = true;
+                    localStorage.setItem("tc_session", JSON.stringify(session));
+                }
+            } catch (err) {
                 icon.className   = "icon icon--error";
                 icon.textContent = "✗";
-                msg.textContent  = "This link is invalid or has expired. You can request a new one from Account Settings.";
+                msg.textContent  = err.message || "This link is invalid or has expired. You can request a new one from Account Settings.";
             }
             homeLink.style.display = "inline-block";
         }

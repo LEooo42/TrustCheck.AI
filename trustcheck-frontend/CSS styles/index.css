@@ -879,6 +879,26 @@ Auth Modal Styles
     display: none;
 }
 
+.auth-helper-btn {
+    width: 100%;
+    padding: 0;
+    border: none;
+    background: none;
+    color: #8fb7ff;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: 'Poppins', sans-serif;
+    text-align: left;
+    cursor: pointer;
+    margin-top: 2px;
+}
+.auth-helper-btn:hover {
+    color: #bdd4ff;
+}
+.auth-helper-btn.hidden {
+    display: none;
+}
+
 .auth-submit {
     width: 100%;
     padding: 12px;
@@ -1705,3 +1725,177 @@ a[data-locked] {
     cursor: not-allowed !important;
     pointer-events: none;
 }
+
+/* ═══════════════════════════════════════════════════════
+   IMPROVE MY AD  — button + modal
+═══════════════════════════════════════════════════════ */
+
+/* Button in the footer-right action strip */
+.ai-modal__improve-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 15px;
+    border-radius: 10px;
+    border: 1px solid rgba(56,133,241,.45);
+    background: rgba(56,133,241,.12);
+    color: #7ab4f5;
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background .18s, color .18s, border-color .18s;
+    white-space: nowrap;
+}
+.ai-modal__improve-btn svg { width:14px; height:14px; flex-shrink:0; }
+.ai-modal__improve-btn:hover {
+    background: rgba(56,133,241,.25);
+    color: #d0e8ff;
+    border-color: rgba(56,133,241,.7);
+}
+
+/* Overlay */
+#improveAdModal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.6);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1200;
+    padding: 20px;
+}
+#improveAdModal.hidden { display: none !important; }
+
+/* Modal card */
+.improve-modal {
+    width: 100%;
+    max-width: 560px;
+    max-height: 90vh;
+    overflow-y: auto;
+    background: #13141a;
+    border: 1px solid rgba(56,133,241,.2);
+    border-radius: 18px;
+    padding: 28px 28px 24px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.55);
+    position: relative;
+}
+
+/* Loading spinner */
+.improve-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    padding: 32px 0;
+    color: #8899bb;
+    font-size: 14px;
+}
+.improve-spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid rgba(56,133,241,.2);
+    border-top-color: #3885f1;
+    border-radius: 50%;
+    animation: spin .75s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Section label */
+.improve-section {
+    margin-bottom: 18px;
+    position: relative;
+}
+.improve-section--changes {
+    margin-top: 6px;
+}
+.improve-section__label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: #667;
+    margin: 0 0 8px;
+}
+.improve-section__label svg { flex-shrink:0; }
+
+/* Improved text box */
+.improve-text-box {
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-size: 14px;
+    line-height: 1.65;
+    color: #c8d8f0;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* Copy button inside section */
+.improve-copy-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    padding: 6px 13px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,.1);
+    background: rgba(255,255,255,.06);
+    color: #8899bb;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+}
+.improve-copy-btn:hover { background: rgba(255,255,255,.1); color: #c8d8f0; }
+.improve-copy-btn svg { width:13px; height:13px; }
+
+/* Changes summary text */
+.improve-changes-summary {
+    font-size: 13px;
+    color: #889;
+    line-height: 1.6;
+    margin: 0;
+}
+
+/* Use button */
+.improve-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255,255,255,.06);
+}
+.improve-use-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 10px 20px;
+    border-radius: 11px;
+    border: none;
+    background: #3885f1;
+    color: #fff;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .18s, transform .12s;
+}
+.improve-use-btn:hover { background: #2a72d8; transform: translateY(-1px); }
+.improve-use-btn svg { width:15px; height:15px; }
+
+/* Error box */
+.improve-error {
+    padding: 16px;
+    background: rgba(192,57,43,.12);
+    border: 1px solid rgba(192,57,43,.3);
+    border-radius: 10px;
+    color: #e07070;
+    font-size: 13px;
+    text-align: center;
+}
+.improve-error.hidden { display: none; }
+.improve-result.hidden { display: none; }
