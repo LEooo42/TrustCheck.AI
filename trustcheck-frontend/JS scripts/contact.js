@@ -129,8 +129,8 @@ form.addEventListener("submit", function (e)
   EmailJS Send Logic
   ===========================================================================================================
   */
-  console.log("Sending with:", "service_cgtidx5", "template_kagf4cu");
-  emailjs.send("service_cgtidx5", "template_kagf4cu", 
+  console.log("Sending with:", "service_lnaywvo", "template_kagf4cu");
+  emailjs.send("service_lnaywvo", "template_kagf4cu", 
   {
     name: name.value,
     email: email.value,
