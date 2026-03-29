@@ -1606,7 +1606,12 @@ MOBILE RESPONSIVE — All breakpoints for index/main page
     #analyzeButton { width: 100%; padding: 12px; font-size: 15px; height: auto; }
 
     /* ── AI Result Modal ── */
-    .ai-modal { border-radius: 16px; }
+    /* Let the modal fill the viewport naturally — no fixed max-height cap.
+       The popup backdrop is inset:0 so the modal stays within the screen.
+       overflow-y:auto on .ai-modal lets the whole card scroll as one unit,
+       which means every section (violations, suggestions, footer) is reachable. */
+    .ai-popup { padding: 8px; align-items: flex-start; padding-top: max(8px, env(safe-area-inset-top)); }
+    .ai-modal { border-radius: 16px; max-height: calc(100vh - 16px); max-height: calc(100dvh - 16px); }
     .ai-modal__header { padding: 14px 16px 12px; }
     .ai-modal__title { font-size: 13px; }
 
@@ -1620,11 +1625,18 @@ MOBILE RESPONSIVE — All breakpoints for index/main page
     .ai-tabs { padding: 10px 16px 0; gap: 6px; overflow-x: auto; flex-wrap: nowrap; }
     .ai-tab { font-size: 12px; padding: 7px 12px; white-space: nowrap; }
 
-    /* Panels */
-    .ai-panels { margin: 0 12px; padding: 14px; max-height: 280px; border-radius: 0 10px 10px 10px; }
+    /* Panels — remove fixed max-height so all content is visible without clipping.
+       The outer .ai-modal already scrolls, so inner panels don't need their own cap. */
+    .ai-panels {
+        margin: 0 12px;
+        padding: 14px;
+        max-height: none;
+        overflow-y: visible;
+        border-radius: 0 10px 10px 10px;
+    }
     .panel-cols { grid-template-columns: 1fr; gap: 14px; }
 
-    /* Modal footer — stack vertically */
+    /* Modal footer — stack vertically, all buttons same width */
     .ai-modal__footer {
         flex-direction: column;
         align-items: stretch;
@@ -1640,7 +1652,8 @@ MOBILE RESPONSIVE — All breakpoints for index/main page
     }
     .ai-modal__copy-btn,
     .ai-modal__export-btn,
-    .ai-modal__rerun-btn { flex: 1; justify-content: center; font-size: 12px; padding: 9px 12px; }
+    .ai-modal__rerun-btn,
+    .ai-modal__improve-btn { flex: 1; justify-content: center; font-size: 12px; padding: 9px 12px; }
     .bookmark-btn { flex: 1; justify-content: center; }
 
     /* Auth modal */
@@ -1671,7 +1684,10 @@ MOBILE RESPONSIVE — All breakpoints for index/main page
     .meta-chip--wide { grid-column: 1; }
     .ai-modal__copy-btn,
     .ai-modal__export-btn,
-    .ai-modal__rerun-btn { font-size: 11px; }
+    .ai-modal__rerun-btn,
+    .ai-modal__improve-btn { font-size: 11px; }
+    .ai-popup { padding: 4px; }
+    .ai-modal { max-height: calc(100vh - 8px); max-height: calc(100dvh - 8px); }
 }
 
 /* Ensure content layers above vanta canvas */
