@@ -1610,9 +1610,12 @@ MOBILE RESPONSIVE — All breakpoints for index/main page
         padding: 6px;
         align-items: center;
     }
-    /* Fixed-height modal card: header+hero+tabs = shrink, panels = grow+scroll, footer = shrink */
+
+    /* Fixed-height card so the tabs panel can take the remaining space */
     .ai-modal {
         border-radius: 14px;
+        height: calc(100vh - 12px);
+        height: calc(100dvh - 12px);
         max-height: calc(100vh - 12px);
         max-height: calc(100dvh - 12px);
         display: flex;
@@ -1620,66 +1623,90 @@ MOBILE RESPONSIVE — All breakpoints for index/main page
         overflow: hidden;
     }
 
-    /* ── Header: tighten ── */
+    /* Header — tighten */
     .ai-modal__header { padding: 10px 14px 8px; flex-shrink: 0; }
     .ai-modal__title { font-size: 12px; }
     .ai-modal__divider { flex-shrink: 0; }
 
-    /* ── Hero: compact horizontal layout ──
-       Score ring stays on the left, 2-col chip grid on the right.
-       Summary chip is hidden to save vertical space — it's already
-       shown in the Violations/Suggestions panels. */
+    /* Hero — keep it compact, but let the overview use the full width */
     .ai-modal__hero {
-        padding: 10px 14px 8px;
-        gap: 12px;
-        flex-direction: row;        /* horizontal: ring | chips */
-        align-items: center;
+        padding: 10px 12px 8px;
+        gap: 10px;
+        flex-direction: column;
+        align-items: stretch;
         flex-shrink: 0;
     }
-    .score-ring-wrap { width: 68px; height: 68px; flex-shrink: 0; align-self: center; }
-    .score-ring { width: 68px; height: 68px; }
-    .score-ring__num { font-size: 18px; }
-    .score-ring__sub { font-size: 10px; }
 
-    /* 2-col chip grid beside the ring */
+    /* Small centered ring */
+    .score-ring-wrap {
+        width: 64px;
+        height: 64px;
+        flex-shrink: 0;
+        margin: 0 auto;
+    }
+    .score-ring      { width: 64px; height: 64px; }
+    .score-ring__num { font-size: 16px; }
+    .score-ring__sub { font-size: 9px; }
+
+    /* Two compact top chips + full-width summary underneath */
     .ai-meta-grid {
+        width: 100%;
         flex: 1;
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 6px;
-        width: auto;
+        min-width: 0;
     }
-    .meta-chip { padding: 6px 10px; border-radius: 9px; gap: 2px; }
+    .meta-chip {
+        min-width: 0;
+        padding: 8px 10px;
+        border-radius: 9px;
+        gap: 2px;
+    }
     .meta-chip__label { font-size: 10px; }
-    .meta-chip__value { font-size: 12px; }
+    .meta-chip__value { font-size: 13px; }
+    .meta-chip--wide,
+    #summaryChip {
+        display: flex !important;
+        grid-column: 1 / -1;
+    }
+    .meta-chip__value--summary {
+        display: block;
+        line-height: 1.45;
+        word-break: break-word;
+    }
 
-    /* Hide the summary chip in the hero on mobile — saves ~120px */
-    #summaryChip { display: none; }
-
-    /* ── Tabs ── */
-    .ai-tabs { padding: 8px 12px 0; gap: 6px; overflow-x: auto; flex-wrap: nowrap; flex-shrink: 0; }
+    /* Tabs */
+    .ai-tabs {
+        padding: 6px 10px 0;
+        gap: 6px;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        flex-shrink: 0;
+    }
     .ai-tab { font-size: 12px; padding: 6px 12px; white-space: nowrap; }
 
-    /* ── Panels: the ONLY scrolling zone ── */
+    /* Panels — the main reading area on phones */
     .ai-panels {
-        margin: 6px 10px;
+        flex: 1 1 auto;
+        min-height: 240px;
+        margin: 6px 10px 8px;
         padding: 12px;
-        flex: 1 1 0;
-        min-height: 0;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
         max-height: none;
         border-radius: 10px;
     }
-    .panel-cols { grid-template-columns: 1fr; gap: 12px; }
+    .panel-cols { grid-template-columns: 1fr; gap: 10px; }
+    .panel-col { min-width: 0; }
 
-    /* ── Footer: always visible at bottom ── */
+    /* Footer — pinned, compact */
     .ai-modal__footer {
+        flex-shrink: 0;
         flex-direction: column;
         align-items: stretch;
-        padding: 8px 12px 12px;
-        gap: 8px;
-        flex-shrink: 0;
+        padding: 8px 10px 10px;
+        gap: 6px;
     }
     .ai-modal__footer-left,
     .ai-modal__footer-right {
@@ -1691,7 +1718,7 @@ MOBILE RESPONSIVE — All breakpoints for index/main page
     .ai-modal__copy-btn,
     .ai-modal__export-btn,
     .ai-modal__rerun-btn,
-    .ai-modal__improve-btn { flex: 1; justify-content: center; font-size: 11px; padding: 8px 10px; }
+    .ai-modal__improve-btn { flex: 1; justify-content: center; font-size: 11px; padding: 7px 8px; }
     .bookmark-btn { flex: 1; justify-content: center; font-size: 11px; }
 
     /* Auth modal */
