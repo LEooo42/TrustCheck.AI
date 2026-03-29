@@ -1608,19 +1608,22 @@ MOBILE RESPONSIVE — All breakpoints for index/main page
     /* ── AI Result Modal ── */
     .ai-popup {
         padding: 6px;
-        align-items: center;
+        align-items: flex-start;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
-    /* Fixed-height card so the tabs panel can take the remaining space */
+    /* Let the whole popup scroll on small phones so the bottom actions never get cut off */
     .ai-modal {
         border-radius: 14px;
-        height: calc(100vh - 12px);
-        height: calc(100dvh - 12px);
+        min-height: calc(100vh - 12px);
+        min-height: calc(100dvh - 12px);
         max-height: calc(100vh - 12px);
         max-height: calc(100dvh - 12px);
         display: flex;
         flex-direction: column;
-        overflow: hidden;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
     /* Header — tighten */
@@ -1688,12 +1691,11 @@ MOBILE RESPONSIVE — All breakpoints for index/main page
 
     /* Panels — the main reading area on phones */
     .ai-panels {
-        flex: 1 1 auto;
-        min-height: 240px;
+        flex: 0 0 auto;
+        min-height: 0;
         margin: 6px 10px 8px;
         padding: 12px;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
+        overflow: visible;
         max-height: none;
         border-radius: 10px;
     }
