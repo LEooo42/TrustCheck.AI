@@ -12,9 +12,8 @@ load_dotenv()
 
 import os, uuid, base64, json, logging, re, time
 from pathlib import Path
-import hashlib, hmac, secrets, smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import hashlib, hmac, secrets
+import resend
 from collections import defaultdict
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -229,15 +228,33 @@ def init_db():
 init_db()
 
 
-# ── Email ─────────────────────────────────────────────────────────────────────
-SMTP_HOST    = os.getenv("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT    = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER    = os.getenv("SMTP_USER", "")
-SMTP_PASS    = os.getenv("SMTP_PASS", "")
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://127.0.0.1:5500").rstrip("/")
+# ── Email (Resend) ─────────────────────────────────────────────────────────────
+#
+# Sign up at https://resend.com — free tier sends 3 000 emails/month.
+# Steps:
+#   1. Create an account and verify your sending domain (or use their onboarding
+#      address for testing: onboarding@resend.dev → only delivers to your own
+#      Resend-account email while in test mode).
+#   2. Create an API key under API Keys → Add API Key.
+#   3. Add RESEND_API_KEY to your Render environment variables.
+#   4. Set EMAIL_FROM to a verified sender, e.g. "TrustCheck.AI <noreply@yourdomain.com>"
+#      (while testing you can use "onboarding@resend.dev" as the from address).
+#
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
+EMAIL_FROM     = os.getenv("EMAIL_FROM", "TrustCheck.AI <onboarding@resend.dev>")
+FRONTEND_URL   = os.getenv("FRONTEND_URL", "http://127.0.0.1:5500").rstrip("/")
 REQUIRE_EMAIL_VERIFICATION_ON_LOGIN = os.getenv(
     "REQUIRE_EMAIL_VERIFICATION_ON_LOGIN", "0"
 ).lower() in {"1", "true", "yes"}
+
+# Initialise the Resend client once at startup
+if RESEND_API_KEY:
+    resend.api_key = RESEND_API_KEY
+else:
+    log.warning(
+        "RESEND_API_KEY is not set — verification emails will be skipped. "
+        "Add it in Render → Environment → RESEND_API_KEY."
+    )
 
 
 def utc_now() -> datetime:
@@ -265,67 +282,89 @@ def issue_verification_token(conn, user_id: str) -> str:
     cur.close()
     return token
 
-def send_verification_email(to_email: str, name: str, token: str):
-    """Send verification link; silently skips if SMTP is not configured."""
-    if not SMTP_USER or not SMTP_PASS:
+def send_verification_email(to_email: str, name: str, token: str) -> None:
+    """Send a verification link via Resend. Silently skips if API key is absent."""
+    if not RESEND_API_KEY:
         log.warning(
-            "SMTP not configured — skipping verification email for %s. Token: %s",
+            "RESEND_API_KEY not set — skipping verification email for %s | token=%s",
             to_email, token,
         )
         return
 
     verify_url = build_verification_url(token)
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = "Verify your TrustCheck.AI account"
-    msg["From"]    = f"TrustCheck.AI <{SMTP_USER}>"
-    msg["To"]      = to_email
 
-    text = f"""Hi {name},
-
-Welcome to TrustCheck.AI! Please verify your email address by clicking the link below:
-
-{verify_url}
-
-This link expires in 24 hours.
-
-If you didn't create this account, you can safely ignore this email.
-
-— The TrustCheck.AI team
-"""
-    html = f"""
-<!DOCTYPE html>
-<html>
-<body style="font-family:sans-serif;background:#0a0f1e;color:#c8d0e8;padding:40px 20px;margin:0">
-  <div style="max-width:480px;margin:0 auto;background:#13141a;border-radius:16px;padding:36px;border:1px solid rgba(56,133,241,0.2)">
-    <h1 style="margin:0 0 6px;font-size:22px;color:#fff">TrustCheck<span style="color:#3885f1">.AI</span></h1>
-    <p style="margin:0 0 28px;color:#667;font-size:13px">Ad Compliance Checker</p>
-    <p style="font-size:15px;margin:0 0 10px">Hi <strong style="color:#fff">{name}</strong>,</p>
-    <p style="font-size:14px;color:#889;margin:0 0 28px;line-height:1.6">
-      Welcome! Please verify your email address to activate your account.
-    </p>
-    <a href="{verify_url}"
-       style="display:inline-block;background:#3885f1;color:#fff;text-decoration:none;
-              padding:13px 28px;border-radius:10px;font-weight:600;font-size:14px">
-      Verify Email Address
-    </a>
-    <p style="font-size:12px;color:#445;margin:28px 0 0">
-      Link expires in 24 hours. If you didn't sign up, ignore this email.
-    </p>
-  </div>
+    html_body = f"""<!DOCTYPE html>
+<html lang="en">
+<body style="margin:0;padding:0;background:#0a0f1e;font-family:'Helvetica Neue',Arial,sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0f1e;padding:40px 20px">
+    <tr><td align="center">
+      <table width="480" cellpadding="0" cellspacing="0"
+             style="background:#13141a;border-radius:16px;border:1px solid rgba(56,133,241,0.2);padding:40px">
+        <tr>
+          <td style="padding-bottom:28px">
+            <span style="font-size:22px;font-weight:700;color:#ffffff">
+              TrustCheck<span style="color:#3885f1">.AI</span>
+            </span>
+            <p style="margin:4px 0 0;font-size:12px;color:#556">Ad Compliance Checker</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:15px;color:#c8d0e8;padding-bottom:8px">
+            Hi <strong style="color:#ffffff">{name}</strong>,
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:14px;color:#8899aa;line-height:1.7;padding-bottom:32px">
+            Welcome to TrustCheck.AI!<br>
+            Please verify your email address to activate your account.
+            This link expires in <strong style="color:#c8d0e8">24 hours</strong>.
+          </td>
+        </tr>
+        <tr>
+          <td style="padding-bottom:36px">
+            <a href="{verify_url}"
+               style="display:inline-block;background:#3885f1;color:#ffffff;
+                      text-decoration:none;padding:14px 32px;border-radius:10px;
+                      font-weight:600;font-size:14px;letter-spacing:0.3px">
+              Verify Email Address
+            </a>
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:12px;color:#445566;border-top:1px solid rgba(56,133,241,0.1);padding-top:20px">
+            If you didn't create a TrustCheck.AI account, you can safely ignore this email.<br>
+            Having trouble with the button?
+            Copy and paste this link into your browser:<br>
+            <span style="color:#3885f1;word-break:break-all">{verify_url}</span>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
 </body>
-</html>
-"""
-    msg.attach(MIMEText(text, "plain"))
-    msg.attach(MIMEText(html, "html"))
+</html>"""
+
+    text_body = (
+        f"Hi {name},\n\n"
+        "Welcome to TrustCheck.AI! Please verify your email address by visiting:\n\n"
+        f"{verify_url}\n\n"
+        "This link expires in 24 hours.\n\n"
+        "If you didn't create this account, you can safely ignore this email.\n\n"
+        "— The TrustCheck.AI team"
+    )
+
     try:
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
-            server.ehlo()
-            server.starttls()
-            server.login(SMTP_USER, SMTP_PASS)
-            server.sendmail(SMTP_USER, to_email, msg.as_string())
-        log.info("Verification email sent to %s", to_email)
-    except Exception as e:
-        log.error("Failed to send verification email to %s: %s", to_email, e)
+        params: resend.Emails.SendParams = {
+            "from":    EMAIL_FROM,
+            "to":      [to_email],
+            "subject": "Verify your TrustCheck.AI account",
+            "html":    html_body,
+            "text":    text_body,
+        }
+        response = resend.Emails.send(params)
+        log.info("Verification email sent via Resend to %s | id=%s", to_email, response.get("id"))
+    except Exception as exc:
+        log.error("Resend failed for %s: %s", to_email, exc)
 
 
 # ── Auth dependency ───────────────────────────────────────────────────────────

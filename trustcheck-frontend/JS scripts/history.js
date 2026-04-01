@@ -1,3 +1,4 @@
+
 document.addEventListener("DOMContentLoaded", () => {
 
     const API_BASE          = "https://trustcheck-ai.onrender.com";

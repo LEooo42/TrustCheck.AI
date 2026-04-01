@@ -1,33 +1,59 @@
-/* =============================================================
-   TrustCheck.AI — Auth (v3)
-   Real backend API. Token in localStorage "tc_token".
-   Session in "tc_session".
-   ============================================================= */
+/* 
+=============================================================
+TrustCheck.AI | Auth (ver: 3)
+Session in "tc_session"
 
-(function () {
+Enjoy reading this code! =)
+============================================================= 
+*/
 
-  const API_BASE    = "https://trustcheck-ai.onrender.com";
-  const TOKEN_KEY   = "tc_token";
+(function () 
+{
+  const API_BASE = "https://trustcheck-ai.onrender.com";
+  const TOKEN_KEY = "tc_token";
   const SESSION_KEY = "tc_session";
+  const EMAIL_VERIFICATION_UI_ENABLED = false;
 
-  /* ── Storage helpers ───────────────────────────────────────── */
-  function getToken()     { return localStorage.getItem(TOKEN_KEY) || null; }
-  function saveToken(t)   { localStorage.setItem(TOKEN_KEY, t); }
-  function clearToken()   { localStorage.removeItem(TOKEN_KEY); }
-  function getSession()   { return JSON.parse(localStorage.getItem(SESSION_KEY) || "null"); }
-  function saveSession(u) { localStorage.setItem(SESSION_KEY, JSON.stringify(u)); }
-  function clearSession() { localStorage.removeItem(SESSION_KEY); }
+  /* Storage helpers */
+  function getToken() 
+  { 
+    return localStorage.getItem(TOKEN_KEY) || null; 
+  }
+
+  function saveToken(t) 
+  { 
+    localStorage.setItem(TOKEN_KEY, t); 
+  }
+
+  function clearToken() 
+  { 
+    localStorage.removeItem(TOKEN_KEY); 
+  }
+
+  function getSession() 
+  { 
+    return JSON.parse(localStorage.getItem(SESSION_KEY) || "null"); 
+  }
+  function saveSession(u) 
+  { 
+    localStorage.setItem(SESSION_KEY, JSON.stringify(u)); 
+  }
+
+  function clearSession() 
+  { 
+    localStorage.removeItem(SESSION_KEY); 
+  }
 
   /* Expose for other scripts */
-  window.TC_AUTH = { getToken };
+  window.TC_AUTH = {getToken};
 
-  /* ── Build absolute path to any page in HTML pages/ ─────────── */
-  function pagesUrl(filename) {
-    // Pages live at the project root alongside auth.js — simple relative path.
+  /* Build absolute path to any page in HTML pages/ */
+  function pagesUrl(filename) 
+  {
     return filename;
   }
 
-  /* ── Inject auth modal ─────────────────────────────────────── */
+  /* Inject auth modal */
   document.body.insertAdjacentHTML("beforeend", `
   <div id="authOverlay" class="auth-overlay hidden" role="dialog" aria-modal="true">
     <div class="auth-modal">
@@ -53,7 +79,7 @@
           <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password"/>
         </div>
         <p class="auth-error hidden" id="loginError"></p>
-        <button type="button" class="auth-helper-btn hidden" id="loginResendVerification">Resend verification email</button>
+        <button type="button" class="auth-resend-btn${EMAIL_VERIFICATION_UI_ENABLED ? "" : " auth-resend-btn--disabled"}" id="loginResendVerification" ${EMAIL_VERIFICATION_UI_ENABLED ? "" : "disabled aria-disabled='true' title='Email verification is currently unavailable.'"}>Resend Verification Email</button>
         <button type="button" class="auth-submit" id="loginSubmit">Log In</button>
         </form>
       </div>
@@ -78,7 +104,39 @@
     </div>
   </div>`);
 
-  /* ── Inject user dropdown ──────────────────────────────────── */
+  document.head.insertAdjacentHTML("beforeend", `
+    <style id="tc-auth-verification-styles">
+      .auth-resend-btn {
+        width: 100%;
+        padding: 12px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 209, 102, 0.24);
+        background: rgba(255, 209, 102, 0.08);
+        color: #d7b76a;
+        font-size: 13px;
+        font-weight: 600;
+        font-family: 'Poppins', sans-serif;
+        cursor: pointer;
+        margin: 6px 0 10px;
+        transition: background-color 0.2s ease, transform 0.15s ease, opacity 0.15s ease;
+      }
+      .auth-resend-btn:not(:disabled):hover {
+        background: rgba(255, 209, 102, 0.16);
+        transform: translateY(-1px);
+      }
+      .auth-resend-btn:active:not(:disabled) {
+        transform: translateY(0);
+      }
+      .auth-resend-btn:disabled,
+      .auth-resend-btn--disabled {
+        opacity: 0.58;
+        cursor: not-allowed;
+        filter: grayscale(0.18);
+      }
+    </style>
+  `);
+
+  /* Inject user dropdown */
   document.body.insertAdjacentHTML("beforeend", `
   <div id="userMenu" class="user-menu hidden" role="menu">
     <div class="user-menu__info">
@@ -98,39 +156,53 @@
     </button>
   </div>`);
 
-  /* ── Header button ─────────────────────────────────────────── */
-  function updateHeaderButton() {
-    const btn         = document.querySelector("header .register-button");
-    const mobileBtn   = document.getElementById("mobileLoginBtn");
-    const mobileAuth  = document.getElementById("mobileNavAuth");
-    if (!btn) return;
+  /* Header button */
+  function updateHeaderButton() 
+  {
+    const btn = document.querySelector("header .register-button");
+    const mobileBtn = document.getElementById("mobileLoginBtn");
+    const mobileAuth = document.getElementById("mobileNavAuth");
+    if (!btn) 
+    {
+      return;
+    }
+
     const session = getSession();
-    if (session) {
+
+    if (session) 
+    {
       const initials = session.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
       btn.innerHTML = `<span class="auth-avatar">${initials}</span> ${session.name.split(" ")[0]}`;
       btn.classList.add("register-button--logged-in");
-      if (mobileBtn) {
+      if (mobileBtn) 
+      {
         mobileBtn.textContent = session.name.split(" ")[0] || "Account";
         mobileBtn.classList.add("mobile-login-btn--logged-in");
       }
-    } else {
+    } 
+    else 
+    {
       btn.innerHTML = "Get Started";
       btn.classList.remove("register-button--logged-in");
-      if (mobileBtn) {
+      if (mobileBtn) 
+      {
         mobileBtn.textContent = "Get Started";
         mobileBtn.classList.remove("mobile-login-btn--logged-in");
       }
     }
 
-    // Gate Settings links — disabled/greyed when not logged in
+    // gate Settings links (disabled when not logged in)
     const loggedIn = !!getSession();
     document.querySelectorAll("a[href*='settings.html'], .mobile-nav-drawer a[href='settings.html']").forEach(link => {
-      if (loggedIn) {
+      if (loggedIn) 
+      {
         link.removeAttribute("data-locked");
         link.style.opacity = "";
         link.style.pointerEvents = "";
         link.title = "";
-      } else {
+      } 
+      else 
+      {
         link.setAttribute("data-locked", "1");
         link.style.opacity = "0.35";
         link.style.pointerEvents = "none";
@@ -139,67 +211,89 @@
     });
   }
 
-  /* ── Modal ─────────────────────────────────────────────────── */
-  function openModal(tab) {
+  /* Modal */
+  function openModal(tab) 
+  {
     const overlay = document.getElementById("authOverlay");
     overlay.classList.remove("hidden");
     overlay.classList.add("active");
     document.body.style.overflow = "hidden";
     switchTab(typeof tab === "string" ? tab : "login");
-    ["loginEmail","loginPassword","signupName","signupEmail","signupPassword"]
-      .forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
+    ["loginEmail","loginPassword","signupName","signupEmail","signupPassword"].forEach(id => { 
+      const el = document.getElementById(id); 
+      if (el) 
+      {
+        el.value = "";
+      } 
+    });
+    
     ["loginError","signupError"].forEach(id => {
       const el = document.getElementById(id);
-      if (el) { el.textContent = ""; el.classList.add("hidden"); }
+      if (el) 
+      { 
+        el.textContent = ""; 
+        el.classList.add("hidden"); 
+      }
     });
   }
 
-  function closeModal() {
+  function closeModal() 
+  {
     const overlay = document.getElementById("authOverlay");
     overlay.classList.remove("active");
     overlay.classList.add("hidden");
-    // Only restore scroll if the result popup is not open
     const resultPopup = document.getElementById("aiResultPopup");
-    if (!resultPopup || resultPopup.style.display !== "flex") {
+    if (!resultPopup || resultPopup.style.display !== "flex") 
+    {
       document.body.style.overflow = "";
     }
   }
 
-  function switchTab(name) {
-    document.querySelectorAll(".auth-tab").forEach(t =>
-      t.classList.toggle("auth-tab--active", t.dataset.authTab === name));
-    document.querySelectorAll(".auth-form").forEach(f =>
-      f.classList.toggle("auth-form--active",
-        f.id === "authForm" + name.charAt(0).toUpperCase() + name.slice(1)));
+  function switchTab(name) 
+  {
+    document.querySelectorAll(".auth-tab").forEach(t => t.classList.toggle("auth-tab--active", t.dataset.authTab === name));
+    document.querySelectorAll(".auth-form").forEach(f => f.classList.toggle("auth-form--active", f.id === "authForm" + name.charAt(0).toUpperCase() + name.slice(1)));
   }
 
-  /* ── Helpers ───────────────────────────────────────────────── */
-  function showError(id, msg) {
+  /* Helpers */
+  function showError(id, msg) 
+  {
     const el = document.getElementById(id);
-    if (!el) return;
+    if (!el) 
+    {
+      return;
+    }
+
     el.textContent = msg;
     el.classList.remove("hidden");
   }
-  function extractErrorMessage(data, fallback) {
+
+  function extractErrorMessage(data, fallback) 
+  {
     if (!data) return fallback;
     if (typeof data.detail === "string") return data.detail;
     if (data.detail && typeof data.detail.message === "string") return data.detail.message;
     if (typeof data.message === "string") return data.message;
     return fallback;
   }
-  function hideError(id) {
+
+  function hideError(id) 
+  {
     const el = document.getElementById(id);
     if (el) el.classList.add("hidden");
   }
-  function setSubmitting(btnId, busy) {
+
+  function setSubmitting(btnId, busy) 
+  {
     const btn = document.getElementById(btnId);
     if (!btn) return;
     btn.disabled    = busy;
     btn.textContent = busy ? "Please wait…" : (btnId === "loginSubmit" ? "Log In" : "Create Account");
   }
 
-  /* ── Sign Up ───────────────────────────────────────────────── */
-  async function handleSignup() {
+  /* Sign Up */
+  async function handleSignup()
+  {
     hideError("signupError");
     const name  = document.getElementById("signupName").value.trim();
     const email = document.getElementById("signupEmail").value.trim().toLowerCase();
@@ -210,7 +304,8 @@
     if (pw.length < 6)               return showError("signupError", "Password must be at least 6 characters.");
 
     setSubmitting("signupSubmit", true);
-    try {
+    try 
+    {
       const res  = await fetch(`${API_BASE}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -222,8 +317,7 @@
       saveSession(data.user);
       closeModal();
       updateHeaderButton();
-      // Show verification reminder as a gentle toast
-      showVerificationReminder();
+      if (EMAIL_VERIFICATION_UI_ENABLED) showVerificationReminder();
     } catch {
       showError("signupError", "Could not reach the server. Is the backend running?");
     } finally {
@@ -231,10 +325,11 @@
     }
   }
 
-  /* ── Log In ────────────────────────────────────────────────── */
+  /* Log In */
   async function handleLogin() {
     hideError("loginError");
-    document.getElementById("loginResendVerification").classList.add("hidden");
+    const loginResendBtn = document.getElementById("loginResendVerification");
+    if (loginResendBtn) loginResendBtn.classList.add("hidden");
     const email = document.getElementById("loginEmail").value.trim().toLowerCase();
     const pw    = document.getElementById("loginPassword").value;
 
@@ -250,8 +345,8 @@
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         const message = extractErrorMessage(data, "Login failed.");
-        if (data.detail && data.detail.code === "EMAIL_NOT_VERIFIED") {
-          document.getElementById("loginResendVerification").classList.remove("hidden");
+        if (EMAIL_VERIFICATION_UI_ENABLED && data.detail && data.detail.code === "EMAIL_NOT_VERIFIED" && loginResendBtn) {
+          loginResendBtn.classList.remove("hidden");
         }
         return showError("loginError", message);
       }
@@ -259,7 +354,7 @@
       saveSession(data.user);
       closeModal();
       updateHeaderButton();
-      if (data.needs_verification) showVerificationReminder();
+      if (EMAIL_VERIFICATION_UI_ENABLED && data.needs_verification) showVerificationReminder();
     } catch {
       showError("loginError", "Could not reach the server. Is the backend running?");
     } finally {
@@ -267,9 +362,11 @@
     }
   }
 
-  /* ── Verification reminder toast ──────────────────────────── */
+  /* Verification reminder toast */
   function showVerificationReminder() {
-    // Only show once per session
+    if (!EMAIL_VERIFICATION_UI_ENABLED) return;
+    const session = getSession();
+    if (session && session.verified) return;
     if (sessionStorage.getItem("tc_verify_reminder")) return;
     sessionStorage.setItem("tc_verify_reminder", "1");
 
@@ -288,7 +385,7 @@
     setTimeout(() => toast.remove(), 7000);
   }
 
-  /* ── User dropdown ─────────────────────────────────────────── */
+  /* User dropdown */
   function openUserMenu(btn) {
     const menu    = document.getElementById("userMenu");
     const session = getSession();
@@ -297,7 +394,7 @@
     document.getElementById("userMenuName").textContent  = session ? session.name  : "";
     document.getElementById("userMenuEmail").textContent = session ? session.email : "";
 
-    // Verification badge
+    // verification badge
     const badge = document.getElementById("userMenuBadge");
     if (session && !session.verified) {
       badge.textContent = "Email not verified";
@@ -306,7 +403,6 @@
       badge.classList.add("hidden");
     }
 
-    // Settings link — path depends on current page
     const settingsLink = document.getElementById("userMenuSettings");
     settingsLink.href = pagesUrl("settings.html");
 
@@ -335,7 +431,7 @@
     return menu && !menu.classList.contains("hidden");
   }
 
-  /* ── Log Out ───────────────────────────────────────────────── */
+  /* Log Out */
   function handleLogout() {
     closeUserMenu();
     clearToken();
@@ -343,7 +439,7 @@
     updateHeaderButton();
   }
 
-  /* ── Session verification on load ─────────────────────────── */
+  /* Session verification on load */
   async function verifySession() {
     const token = getToken();
     if (!token) return;
@@ -353,21 +449,28 @@
       });
       if (!res.ok) { clearToken(); clearSession(); }
       else {
+        const prevSession = getSession();
         const user = await res.json();
         saveSession(user);
+
+        /* If the user just became verified (e.g. returned from verify.html), clear the verification reminder so it doesn't nag again */
+        if (user.verified && prevSession && !prevSession.verified) {
+          sessionStorage.removeItem("tc_verify_reminder");
+          document.querySelectorAll(".auth-toast").forEach(t => t.remove());
+        }
       }
-    } catch { /* server unreachable — keep cached session */ }
+    } catch { /* Server unreachable for some reason (keep cached session) */ }
     updateHeaderButton();
   }
 
-  /* ── Single document click handler ────────────────────────── */
+  /* Single document click handler */
   document.addEventListener("click", e => {
     const menu    = document.getElementById("userMenu");
     const overlay = document.getElementById("authOverlay");
 
     if (e.target === overlay) { closeModal(); return; }
 
-    // Scope to the header button only, not any other .register-button on the page
+    // scope to the header button only, not any other .register-button on the page
     const liveBtn = document.querySelector("header .register-button");
     if (liveBtn && (liveBtn === e.target || liveBtn.contains(e.target))) {
       if (getSession()) {
@@ -409,6 +512,10 @@
   document.querySelectorAll(".auth-tab").forEach(btn =>
     btn.addEventListener("click", () => switchTab(btn.dataset.authTab)));
   async function handleResendVerificationFromLogin() {
+    if (!EMAIL_VERIFICATION_UI_ENABLED) {
+      return showError("loginError", "Email verification is currently unavailable.");
+    }
+
     hideError("loginError");
     const email = document.getElementById("loginEmail").value.trim().toLowerCase();
     if (!/\S+@\S+\.\S+/.test(email)) {
@@ -416,6 +523,7 @@
     }
 
     const btn = document.getElementById("loginResendVerification");
+    if (!btn) return;
     btn.disabled = true;
     btn.textContent = "Sending…";
     try {
@@ -438,7 +546,10 @@
   }
 
   document.getElementById("loginSubmit").addEventListener("click", handleLogin);
-  document.getElementById("loginResendVerification").addEventListener("click", handleResendVerificationFromLogin);
+  const loginResendVerificationBtn = document.getElementById("loginResendVerification");
+  if (EMAIL_VERIFICATION_UI_ENABLED && loginResendVerificationBtn) {
+    loginResendVerificationBtn.addEventListener("click", handleResendVerificationFromLogin);
+  }
   document.getElementById("signupSubmit").addEventListener("click", handleSignup);
   document.getElementById("loginPassword").addEventListener("keydown", e => {
     if (e.key === "Enter") handleLogin();

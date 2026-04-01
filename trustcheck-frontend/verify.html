@@ -78,13 +78,48 @@
 
                 icon.className   = "icon icon--success";
                 icon.textContent = "✓";
-                msg.textContent  = data.message || "Your email has been verified! You can now close this tab or return to TrustCheck.AI.";
 
-                const session = JSON.parse(localStorage.getItem("tc_session") || "null");
-                if (session) {
-                    session.verified = true;
-                    localStorage.setItem("tc_session", JSON.stringify(session));
+                // Refresh the stored session so the rest of the app sees verified=true immediately
+                const token = localStorage.getItem("tc_token");
+                if (token) {
+                    try {
+                        const meRes = await fetch(`${API_BASE}/auth/me`, {
+                            headers: { Authorization: `Bearer ${token}` }
+                        });
+                        if (meRes.ok) {
+                            const freshUser = await meRes.json();
+                            localStorage.setItem("tc_session", JSON.stringify(freshUser));
+                        }
+                    } catch (_) { /* non-fatal */ }
+                } else {
+                    // No active session — just patch the cached object if it exists
+                    const session = JSON.parse(localStorage.getItem("tc_session") || "null");
+                    if (session) {
+                        session.verified = true;
+                        localStorage.setItem("tc_session", JSON.stringify(session));
+                    }
                 }
+
+                // Auto-redirect countdown
+                let seconds = 5;
+                function updateMsg() {
+                    msg.textContent = `Your email has been verified! Redirecting in ${seconds}s…`;
+                }
+                updateMsg();
+                homeLink.style.display = "inline-block";
+                homeLink.textContent   = "Go now";
+
+                const countdown = setInterval(() => {
+                    seconds--;
+                    if (seconds <= 0) {
+                        clearInterval(countdown);
+                        window.location.href = "index.html";
+                    } else {
+                        updateMsg();
+                    }
+                }, 1000);
+
+                return; // skip the finally homeLink show below — already shown
             } catch (err) {
                 icon.className   = "icon icon--error";
                 icon.textContent = "✗";

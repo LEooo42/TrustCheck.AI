@@ -3,6 +3,7 @@
    ============================================================= */
 
 const API_BASE = "https://trustcheck-ai.onrender.com";
+const EMAIL_VERIFICATION_UI_ENABLED = false;
 
 document.getElementById("year").textContent = new Date().getFullYear();
 
@@ -31,7 +32,40 @@ function populatePage(user) {
     // Verification status
     const vsEl = document.getElementById("verificationStatus");
     const resendBtn = document.getElementById("resendVerificationBtn");
-    resendBtn.classList.add("hidden");
+    const verificationSub = document.querySelector("#section-verification .settings-section__sub");
+
+    if (resendBtn) {
+        resendBtn.classList.remove("hidden");
+        resendBtn.disabled = true;
+        resendBtn.setAttribute("aria-disabled", "true");
+        resendBtn.title = "Email verification is currently unavailable.";
+    }
+
+    if (!EMAIL_VERIFICATION_UI_ENABLED) {
+        if (verificationSub) {
+            verificationSub.textContent = "Verification email sending is currently disabled.";
+        }
+
+        if (verified) {
+            vsEl.innerHTML = `
+                <div class="verify-badge verify-badge--ok">
+                    <svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="#39d98a" stroke-width="1.3"/>
+                    <path d="M5 8l2 2 4-4" stroke="#39d98a" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Email verified
+                </div>`;
+        } else {
+            vsEl.innerHTML = `
+                <div class="verify-badge verify-badge--warn">
+                    <svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="#ffd166" stroke-width="1.3"/>
+                    <path d="M8 5v4" stroke="#ffd166" stroke-width="1.3" stroke-linecap="round"/>
+                    <circle cx="8" cy="11" r="0.6" fill="#ffd166"/></svg>
+                    Email not verified
+                </div>
+                <p class="verify-hint">Verification emails are temporarily unavailable, so resend actions have been disabled.</p>`;
+        }
+        return;
+    }
+
     if (verified) {
         vsEl.innerHTML = `
             <div class="verify-badge verify-badge--ok">
@@ -48,7 +82,12 @@ function populatePage(user) {
                 Email not verified
             </div>
             <p class="verify-hint">Check your inbox for a verification email, or request a new one below.</p>`;
-        resendBtn.classList.remove("hidden");
+        if (resendBtn) {
+            resendBtn.classList.remove("hidden");
+            resendBtn.disabled = false;
+            resendBtn.removeAttribute("aria-disabled");
+            resendBtn.title = "";
+        }
     }
 }
 
@@ -172,22 +211,58 @@ document.getElementById("savePasswordBtn").addEventListener("click", async () =>
 });
 
 /* ── Resend verification ───────────────────────────────────── */
-document.getElementById("resendVerificationBtn").addEventListener("click", async () => {
-    setBusy("resendVerificationBtn", true, "Resend Verification Email");
-    try {
-        const res  = await fetch(`${API_BASE}/auth/resend-verification`, {
-            method:  "POST",
-            headers: { Authorization: `Bearer ${token}` },
+let _verifyPollTimer = null;
+
+function startVerifyPoll() {
+    if (_verifyPollTimer) return; // already polling
+    _verifyPollTimer = setInterval(async () => {
+        try {
+            const res = await fetch(`${API_BASE}/auth/me`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (!res.ok) return;
+            const user = await res.json();
+            if (user.verified) {
+                clearInterval(_verifyPollTimer);
+                _verifyPollTimer = null;
+                // Update localStorage so the rest of the app knows
+                const sess = JSON.parse(localStorage.getItem("tc_session") || "null");
+                if (sess) { sess.verified = true; localStorage.setItem("tc_session", JSON.stringify(sess)); }
+                populatePage(user);
+                showMsg("verificationMsg", "Your email has been verified! ✓", false);
+            }
+        } catch { /* ignore */ }
+    }, 4000);
+}
+
+const resendVerificationBtn = document.getElementById("resendVerificationBtn");
+
+if (resendVerificationBtn) {
+    if (!EMAIL_VERIFICATION_UI_ENABLED) {
+        resendVerificationBtn.disabled = true;
+        resendVerificationBtn.classList.remove("hidden");
+        resendVerificationBtn.setAttribute("aria-disabled", "true");
+        resendVerificationBtn.title = "Email verification is currently unavailable.";
+    } else {
+        resendVerificationBtn.addEventListener("click", async () => {
+            setBusy("resendVerificationBtn", true, "Resend Verification Email");
+            try {
+                const res  = await fetch(`${API_BASE}/auth/resend-verification`, {
+                    method:  "POST",
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                const data = await res.json();
+                if (!res.ok) return showMsg("verificationMsg", extractErrorMessage(data, "Failed to send."), true);
+                showMsg("verificationMsg", "Verification email sent! Check your inbox — this page will update automatically when verified.", false);
+                startVerifyPoll();
+            } catch {
+                showMsg("verificationMsg", "Could not reach the server.", true);
+            } finally {
+                setBusy("resendVerificationBtn", false, "Resend Verification Email");
+            }
         });
-        const data = await res.json();
-        if (!res.ok) return showMsg("verificationMsg", extractErrorMessage(data, "Failed to send."), true);
-        showMsg("verificationMsg", "Verification email sent! Check your inbox.", false);
-    } catch {
-        showMsg("verificationMsg", "Could not reach the server.", true);
-    } finally {
-        setBusy("resendVerificationBtn", false, "Resend Verification Email");
     }
-});
+}
 
 /* ── Bookmarks ─────────────────────────────────────────────── */
 let bookmarksLoaded = false;
@@ -265,5 +340,10 @@ async function loadBookmarks() {
 document.querySelectorAll(".settings-nav__item").forEach(btn => {
     btn.addEventListener("click", () => {
         if (btn.dataset.section === "bookmarks") loadBookmarks();
+        if (btn.dataset.section === "verification") {
+            // If still unverified, start polling so the tab updates when they click the link in their inbox
+            const sess = JSON.parse(localStorage.getItem("tc_session") || "null");
+            if (sess && !sess.verified) startVerifyPoll();
+        }
     });
 });
