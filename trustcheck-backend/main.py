@@ -33,11 +33,11 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
 
-# ── Logging ───────────────────────────────────────────────────────────────────
+# Logging
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("trustcheck")
 
-# ── App ───────────────────────────────────────────────────────────────────────
+# App
 app = FastAPI(title="TrustCheck.AI", version="3.0.0")
 app.add_middleware(
     CORSMiddleware,
@@ -47,13 +47,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Anthropic ─────────────────────────────────────────────────────────────────
+# Anthropic
 api_key = os.getenv("ANTHROPIC_API_KEY")
 if not api_key:
     raise RuntimeError("ANTHROPIC_API_KEY is not set")
 claude = anthropic.Anthropic(api_key=api_key)
 
-# ── Token helpers ─────────────────────────────────────────────────────────────
+# Token helpers 
 TOKEN_SECRET = os.getenv("TOKEN_SECRET", secrets.token_hex(32))
 TOKEN_TTL    = int(os.getenv("TOKEN_TTL_HOURS", "168")) * 3600
 
@@ -74,7 +74,7 @@ def verify_token(token: str) -> Optional[str]:
     except Exception:
         return None
 
-# ── Password hashing ──────────────────────────────────────────────────────────
+# Password hashing
 def hash_password(pw: str) -> str:
     salt = secrets.token_hex(16)
     dk   = hashlib.pbkdf2_hmac("sha256", pw.encode(), salt.encode(), 260_000)
@@ -88,15 +88,7 @@ def check_password(pw: str, stored: str) -> bool:
     except Exception:
         return False
 
-# ── Neon / PostgreSQL connection pool ─────────────────────────────────────────
-#
-# Add DATABASE_URL to your Render environment variables.
-# Copy it from Neon Console → your project → Connection Details → Connection string.
-# It looks like:
-#   postgresql://user:password@ep-xxx-yyy.region.aws.neon.tech/dbname?sslmode=require
-#
-# Neon free tier pauses after 5 min of inactivity; the pool's minconn=1 keeps
-# at least one connection alive so cold-start latency stays low.
+# Neon / PostgreSQL 
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
@@ -106,7 +98,6 @@ if not DATABASE_URL:
         "pointing at your Neon PostgreSQL connection string."
     )
 
-# psycopg2 accepts both 'postgres://' and 'postgresql://'
 _pg_url = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 _pool: ThreadedConnectionPool = ThreadedConnectionPool(
@@ -136,9 +127,7 @@ def db():
         _pool.putconn(conn)
 
 
-# ── SQL helpers ───────────────────────────────────────────────────────────────
-# SQLite uses ?  — PostgreSQL uses %s.  These thin wrappers keep every query
-# written in the SQLite ? style and auto-convert at call time.
+# SQL helpers
 
 def _q(sql: str) -> str:
     """Replace ? placeholders with %s for psycopg2."""
@@ -159,7 +148,7 @@ def _fetchall(cur, sql: str, params=()):
     return cur.fetchall()
 
 
-# ── Schema init ───────────────────────────────────────────────────────────────
+# Schema init
 
 def init_db():
     """Create tables if they do not exist. Safe to run on every startup."""
@@ -228,18 +217,8 @@ def init_db():
 init_db()
 
 
-# ── Email (Resend) ─────────────────────────────────────────────────────────────
-#
-# Sign up at https://resend.com — free tier sends 3 000 emails/month.
-# Steps:
-#   1. Create an account and verify your sending domain (or use their onboarding
-#      address for testing: onboarding@resend.dev → only delivers to your own
-#      Resend-account email while in test mode).
-#   2. Create an API key under API Keys → Add API Key.
-#   3. Add RESEND_API_KEY to your Render environment variables.
-#   4. Set EMAIL_FROM to a verified sender, e.g. "TrustCheck.AI <noreply@yourdomain.com>"
-#      (while testing you can use "onboarding@resend.dev" as the from address).
-#
+# Email (Resend) (not implemented fully in v1.0.3) 
+
 RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
 EMAIL_FROM     = os.getenv("EMAIL_FROM", "TrustCheck.AI <onboarding@resend.dev>")
 FRONTEND_URL   = os.getenv("FRONTEND_URL", "http://127.0.0.1:5500").rstrip("/")
@@ -367,7 +346,7 @@ def send_verification_email(to_email: str, name: str, token: str) -> None:
         log.error("Resend failed for %s: %s", to_email, exc)
 
 
-# ── Auth dependency ───────────────────────────────────────────────────────────
+# Auth dependency 
 _bearer = HTTPBearer(auto_error=False)
 
 def get_user(
@@ -394,8 +373,8 @@ def require_auth(user=Depends(get_user)) -> dict:
     return user
 
 
-# ── Rate limiter ──────────────────────────────────────────────────────────────
-RATE_LIMIT      = int(os.getenv("RATE_LIMIT", "10"))
+# Rate limiter 
+RATE_LIMIT = int(os.getenv("RATE_LIMIT", "10"))
 RATE_WINDOW_SEC = int(os.getenv("RATE_WINDOW_SEC", "3600"))
 _rate: dict[str, list[float]] = defaultdict(list)
 
@@ -414,7 +393,7 @@ def rate_check(ip: str) -> tuple[bool, int, int]:
     return True, RATE_LIMIT - len(ts) - 1, ws
 
 
-# ── Platform policies ─────────────────────────────────────────────────────────
+# Platform policies 
 POLICIES = {
     "facebook": """
 Facebook / Meta Advertising Policies (key rules):
@@ -459,7 +438,7 @@ LinkedIn Advertising Policies (key rules):
 }
 
 
-# ── Pydantic models ───────────────────────────────────────────────────────────
+# Pydantic models 
 class RegisterIn(BaseModel):
     name: str
     email: str
@@ -554,7 +533,7 @@ class ImproveAdResponse(BaseModel):
     changes_summary: str
 
 
-# ── Auth endpoints ────────────────────────────────────────────────────────────
+# Auth endpoints 
 
 @app.post("/auth/register")
 async def register(body: RegisterIn):
@@ -731,7 +710,7 @@ async def update_settings(body: SettingsIn, user=Depends(require_auth)):
     return dict(row)
 
 
-# ── Stats endpoint ────────────────────────────────────────────────────────────
+# Stats endpoint 
 
 @app.get("/v1/stats", response_model=StatsResponse)
 async def get_stats(user=Depends(require_auth)):
@@ -760,7 +739,7 @@ async def get_stats(user=Depends(require_auth)):
     )
 
 
-# ── History endpoints ─────────────────────────────────────────────────────────
+# History endpoints 
 
 @app.get("/v1/history", response_model=list[HistoryEntry])
 async def get_history(user=Depends(require_auth)):
@@ -818,7 +797,7 @@ async def clear_history(user=Depends(require_auth)):
     return {"cleared": True}
 
 
-# ── Bookmark endpoints ────────────────────────────────────────────────────────
+# Bookmark endpoints 
 
 @app.post("/v1/bookmarks", response_model=BookmarkEntry)
 async def add_bookmark(body: BookmarkIn, user=Depends(require_auth)):
@@ -872,7 +851,7 @@ async def remove_bookmark(analysis_id: str, user=Depends(require_auth)):
     return {"removed": analysis_id}
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# Helpers 
 
 def build_prompt(platform: str, ad_text: str, language: str, has_images: bool = False) -> str:
     policy = POLICIES.get(platform, POLICIES["google"])
@@ -1001,7 +980,7 @@ async def fetch_url(url: str) -> tuple[str, Optional[bytes], Optional[str]]:
     return text, img_bytes, img_mt
 
 
-# ── Rate status ───────────────────────────────────────────────────────────────
+# Rate status
 
 @app.get("/v1/rate-status", response_model=RateStatus)
 async def rate_status(request: Request):
@@ -1011,7 +990,7 @@ async def rate_status(request: Request):
     return RateStatus(limit=RATE_LIMIT, remaining=max(0, RATE_LIMIT - len(ts)), window_seconds=ws)
 
 
-# ── Analyze ───────────────────────────────────────────────────────────────────
+# Analyze
 
 @app.post("/v1/analyze", response_model=AnalyzeResponse)
 async def analyze(
@@ -1190,7 +1169,7 @@ async def analyze(
     )
 
 
-# ── Improve Ad endpoint ───────────────────────────────────────────────────────
+# Improve Ad endpoint
 
 @app.post("/v1/improve-ad", response_model=ImproveAdResponse)
 async def improve_ad(
@@ -1283,7 +1262,7 @@ Return ONLY a single valid JSON object — no markdown, no prose, no fences:
     return ImproveAdResponse(improved_text=improved, changes_summary=summary)
 
 
-# ── Health ────────────────────────────────────────────────────────────────────
+# Health cheecks
 
 @app.get("/health")
 def health():
