@@ -1,167 +1,243 @@
-/* 
-===========================================================================================================
-Footer Year Setup
-Block Contains:
- - Dynamically sets the current year in the footer
-===========================================================================================================
+/*
+Function to set the current year in the footer.
+Paramaters:
+- none: Uses the #year element from the page
+Returns:
+- none: Updates the footer text
 */
+function setFooterYear()
+{
+    const yearElement = document.getElementById("year")
 
-document.getElementById("year").textContent = new Date().getFullYear(); 
+    if (!yearElement)
+    {
+        return
+    }
 
-/* 
-===========================================================================================================
-Form Elements
-Block Contains:
- - Form and field references
- - Error message references
-===========================================================================================================
-*/
-
-const form = document.getElementById("contactForm");
-const name = document.getElementById("name");
-const email = document.getElementById("email");
-const message = document.getElementById("message");
-const nameError = document.getElementById("nameError");
-const emailError = document.getElementById("emailError");
-const messageError = document.getElementById("messageError");
-
-const sendBtn = form.querySelector(".register-button");
-const loadingDots = document.getElementById("emailLoadingDots");
-
-/* Create a status element below the button */
-let formStatus = document.getElementById("formStatus");
-if (!formStatus) {
-  formStatus = document.createElement("p");
-  formStatus.id = "formStatus";
-  formStatus.classList.add("form-status");
-  sendBtn.insertAdjacentElement("afterend", formStatus);
+    yearElement.textContent = new Date().getFullYear()
 }
 
-/* 
-===========================================================================================================
-EmailJS Initialization
-Block Contains:
- - Initializes EmailJS with public key
- - Must match the key in .env / EmailJS dashboard
-===========================================================================================================
+setFooterYear()
+
+const form = document.getElementById("contactForm")
+const nameInput = document.getElementById("name")
+const emailInput = document.getElementById("email")
+const messageInput = document.getElementById("message")
+const nameError = document.getElementById("nameError")
+const emailError = document.getElementById("emailError")
+const messageError = document.getElementById("messageError")
+const sendButton = form.querySelector(".register-button")
+const loadingDots = document.getElementById("emailLoadingDots")
+const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+
+/*
+Function to make sure the form has a status message element.
+Paramaters:
+- none: Uses the existing contact form elements
+Returns:
+- HTMLElement formStatus: The status element below the button
 */
-
-(function() {
-  emailjs.init("hEQMW1kEwHHpV3DvS");
-})();
-
-/* 
-===========================================================================================================
-Form Submission Logic
-Block Contains:
- - Input validation
- - Loading animation
- - EmailJS send logic
- - Success / error messages
-===========================================================================================================
-*/
-
-form.addEventListener("submit", function (e) 
+function ensureStatusElement()
 {
-  e.preventDefault();
+    let formStatus = document.getElementById("formStatus")
 
-  /* Reset previous error states */
-  [name, email, message].forEach(input => 
-  {
-    input.classList.remove("error");
-    input.disabled = false; 
-  });
+    if (!formStatus)
+    {
+        formStatus = document.createElement("p")
+        formStatus.id = "formStatus"
+        formStatus.classList.add("form-status")
+        sendButton.insertAdjacentElement("afterend", formStatus)
+    }
 
-  [nameError, emailError, messageError].forEach(label => 
-  {
-    label.textContent = "";
-    label.style.display = "none";
-  });
+    return formStatus
+}
 
-  formStatus.textContent = "";
-  formStatus.style.color = "";
+const formStatus = ensureStatusElement()
 
-  let hasError = false;
+/*
+Function to initialize EmailJS.
+Paramaters:
+- none: Uses the public key stored in the script
+Returns:
+- none: Starts EmailJS for this page
+*/
+function initializeEmailService()
+{
+    emailjs.init("hEQMW1kEwHHpV3DvS")
+}
 
-  /* Input validation */
-  if(!name.value.trim()) 
-  {
-    name.classList.add("error");
-    nameError.textContent = "Name is required.";
-    nameError.style.display = "block";
-    hasError = true;
-  }
+initializeEmailService()
 
-  /* Proper email validation */
-  const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-  if(!email.value.trim()) 
-  {
-    email.classList.add("error");
-    emailError.textContent = "Email is required.";
-    emailError.style.display = "block";
-    hasError = true;
-  }
-  else if(!emailPattern.test(email.value)) 
-  {
-    email.classList.add("error");
-    emailError.textContent = "Please enter a valid email address.";
-    emailError.style.display = "block";
-    hasError = true;
-  }
+/*
+Function to clear old validation errors.
+Paramaters:
+- none: Uses the contact form fields and labels
+Returns:
+- none: Resets the form error state
+*/
+function resetErrors()
+{
+    [nameInput, emailInput, messageInput].forEach(function(input)
+    {
+        input.classList.remove("error")
+        input.disabled = false
+    })
 
-  if(!message.value.trim()) 
-  {
-    message.classList.add("error");
-    messageError.textContent = "Message cannot be empty.";
-    messageError.style.display = "block";
-    hasError = true;
-  }
+    [nameError, emailError, messageError].forEach(function(label)
+    {
+        label.textContent = ""
+        label.style.display = "none"
+    })
 
-  if(hasError) return;
+    formStatus.textContent = ""
+    formStatus.style.color = ""
+}
 
-  /* UI: Disable input, show animation, hide button */
-  [name, email, message].forEach(input => input.disabled = true);
-  sendBtn.style.display = "none";
-  loadingDots.style.display = "flex";
+/*
+Function to validate the contact form.
+Paramaters:
+- none: Reads the current field values from the form
+Returns:
+- boolean hasError: True if the form has invalid input
+*/
+function validateForm()
+{
+    let hasError = false
 
-  /* 
-  ===========================================================================================================
-  EmailJS Send Logic
-  ===========================================================================================================
-  */
-  console.log("Sending with:", "service_lnaywvo", "template_kagf4cu");
-  emailjs.send("service_lnaywvo", "template_kagf4cu", 
-  {
-    name: name.value,
-    email: email.value,
-    message: message.value
-  })
-  .then(() => 
-  {
-    /* Success message */
-    formStatus.style.display = "block";
-    formStatus.style.color = "#1abc9c";
-    formStatus.textContent = "Message sent successfully!";
+    if (!nameInput.value.trim())
+    {
+        nameInput.classList.add("error")
+        nameError.textContent = "Name is required."
+        nameError.style.display = "block"
+        hasError = true
+    }
 
-    /* Reset form fields after successful send */
-    form.reset();
+    if (!emailInput.value.trim())
+    {
+        emailInput.classList.add("error")
+        emailError.textContent = "Email is required."
+        emailError.style.display = "block"
+        hasError = true
+    }
+    else if (!emailPattern.test(emailInput.value))
+    {
+        emailInput.classList.add("error")
+        emailError.textContent = "Please enter a valid email address."
+        emailError.style.display = "block"
+        hasError = true
+    }
 
-    /* Optional: small fade-out for success message after a few seconds */
-    setTimeout(() => {
-      formStatus.style.display = "none";
-    }, 4000);
-  })
-  .catch((error) => 
-  {
-    console.error("EmailJS error:", error);
-    formStatus.style.display = "block";
-    formStatus.style.color = "#f26c6c";
-    formStatus.textContent = "Failed to send. Please try again later.";
-  })
-  .finally(() => 
-  {
-    [name, email, message].forEach(input => input.disabled = false);
-    sendBtn.style.display = "block";
-    loadingDots.style.display = "none";
-  });
-});
+    if (!messageInput.value.trim())
+    {
+        messageInput.classList.add("error")
+        messageError.textContent = "Message cannot be empty."
+        messageError.style.display = "block"
+        hasError = true
+    }
+
+    return hasError
+}
+
+/*
+Function to switch the form into loading mode.
+Paramaters:
+- none: Uses the current form elements
+Returns:
+- none: Hides the button and shows the loading dots
+*/
+function showLoadingState()
+{
+    [nameInput, emailInput, messageInput].forEach(function(input)
+    {
+        input.disabled = true
+    })
+
+    sendButton.style.display = "none"
+    loadingDots.style.display = "flex"
+}
+
+/*
+Function to restore the form after sending finishes.
+Paramaters:
+- none: Uses the current form elements
+Returns:
+- none: Enables the form and restores the button
+*/
+function restoreFormState()
+{
+    [nameInput, emailInput, messageInput].forEach(function(input)
+    {
+        input.disabled = false
+    })
+
+    sendButton.style.display = "block"
+    loadingDots.style.display = "none"
+}
+
+/*
+Function to send the form through EmailJS.
+Paramaters:
+- none: Reads the current form field values
+Returns:
+- Promise<void> none: Resolves when the request finishes
+*/
+async function sendMessage()
+{
+    console.log("Sending with:", "service_lnaywvo", "template_kagf4cu")
+
+    try
+    {
+        await emailjs.send("service_lnaywvo", "template_kagf4cu",
+        {
+            name: nameInput.value,
+            email: emailInput.value,
+            message: messageInput.value
+        })
+
+        formStatus.style.display = "block"
+        formStatus.style.color = "#1abc9c"
+        formStatus.textContent = "Message sent successfully!"
+
+        form.reset()
+
+        setTimeout(function()
+        {
+            formStatus.style.display = "none"
+        }, 4000)
+    }
+    catch (error)
+    {
+        console.error("EmailJS error:", error)
+        formStatus.style.display = "block"
+        formStatus.style.color = "#f26c6c"
+        formStatus.textContent = "Failed to send. Please try again later."
+    }
+    finally
+    {
+        restoreFormState()
+    }
+}
+
+/*
+Function to handle contact form submission.
+Paramaters:
+- Event event: The submit event from the form
+Returns:
+- Promise<void> none: Stops default submit and sends the message
+*/
+async function handleSubmit(event)
+{
+    event.preventDefault()
+
+    resetErrors()
+
+    if (validateForm())
+    {
+        return
+    }
+
+    showLoadingState()
+    await sendMessage()
+}
+
+form.addEventListener("submit", handleSubmit)

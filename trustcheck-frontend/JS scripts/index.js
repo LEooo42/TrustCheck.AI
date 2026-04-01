@@ -2,8 +2,6 @@
 
 document.getElementById("year").textContent = new Date().getFullYear();
 
-
-
 const API_BASE = "https://trustcheck-ai.onrender.com";
 const ANALYZE_ENDPOINT = `${API_BASE}/v1/analyze`;
 const RATE_STATUS_ENDPOINT = `${API_BASE}/v1/rate-status`;
@@ -14,7 +12,6 @@ const IMPROVE_ENDPOINT    = `${API_BASE}/v1/improve-ad`;
 
 const MAX_HISTORY = 50;
 const REQUIRE_IMAGE = false; 
-
 
 const dropArea = document.getElementById("drop-area");
 const fileInput = document.getElementById("fileInput");
